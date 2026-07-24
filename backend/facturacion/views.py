@@ -123,11 +123,22 @@ class FacturaViewSet(viewsets.ModelViewSet):
         chart_data_list = [{'name': k, 'value': v} for k, v in chart_data.items()]
         chart_data_list.sort(key=lambda x: x['value'], reverse=True)
         
+        # Agrupar por proveedor/taller
+        proveedor_chart_data_raw = valid_qs.values('taller__nombre', 'proveedor__nombre').annotate(monto_total=Sum('monto'))
+        proveedor_data = {}
+        for item in proveedor_chart_data_raw:
+            prov = item['taller__nombre'] or item['proveedor__nombre'] or 'No especificado'
+            proveedor_data[prov] = proveedor_data.get(prov, 0) + float(item['monto_total'] or 0)
+            
+        proveedor_chart_data_list = [{'name': k, 'value': v} for k, v in proveedor_data.items()]
+        proveedor_chart_data_list.sort(key=lambda x: x['value'], reverse=True)
+        
         return Response({
             'total': float(total),
             'count': count,
             'units': unidades,
-            'chart_data': chart_data_list
+            'chart_data': chart_data_list,
+            'proveedor_chart_data': proveedor_chart_data_list
         })
 
     @action(detail=False, methods=['get'])

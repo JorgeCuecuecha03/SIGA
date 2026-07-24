@@ -94,6 +94,7 @@ const Facturacion = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showChartsModal, setShowChartsModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeChart, setActiveChart] = useState('categoria');
   // Cancel invoice UI state
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [facturaToCancel, setFacturaToCancel] = useState(null);
@@ -1013,68 +1014,110 @@ const Facturacion = () => {
               <X size={20} />
             </button>
 
-            <div className="flex items-center gap-4 mb-8">
-              <div className="bg-emerald-500/10 p-3 rounded-2xl">
-                <BarChart3 className="text-emerald-500" size={24} />
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+              <div className="flex items-center gap-4">
+                <div className="bg-emerald-500/10 p-3 rounded-2xl">
+                  <BarChart3 className="text-emerald-500" size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Análisis de Gastos</h2>
+                  <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">
+                    {activeChart === 'categoria' ? 'Distribución por Categoría' : 'Distribución por Proveedor'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Análisis de Gastos</h2>
-                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Distribución por Categoría</p>
+              
+              <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl">
+                <button
+                  onClick={() => setActiveChart('categoria')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                    activeChart === 'categoria' 
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Categoría
+                </button>
+                <button
+                  onClick={() => setActiveChart('proveedor')}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                    activeChart === 'proveedor' 
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+                >
+                  Proveedor
+                </button>
               </div>
             </div>
 
-            {chartDataConFills.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                <div className="h-64 w-full">
-                  <ChartContainer config={categoryChartConfig} className="h-full w-full">
-                    <PieChart>
-                      <Pie
-                        data={chartDataConFills}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={65}
-                        outerRadius={90}
-                        paddingAngle={3}
-                        dataKey="value"
-                        stroke="rgba(0,0,0,0)"
-                      >
-                        {chartDataConFills.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip content={<ChartTooltipContent config={categoryChartConfig} formatter={(value) => `$${parseFloat(value).toLocaleString('es-MX', {minimumFractionDigits: 2})}`} />} />
-                    </PieChart>
-                  </ChartContainer>
-                </div>
-                
-                <div className="space-y-2.5 max-h-[16.5rem] overflow-y-auto pr-2 custom-scrollbar">
-                  {(() => {
-                    const total = chartDataConFills.reduce((acc, curr) => acc + curr.value, 0);
-                    return chartDataConFills.map((item) => {
-                      const percentage = total > 0 ? ((item.value / total) * 100).toFixed(1) : '0.0';
-                      return (
-                        <div key={item.name} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800/50 rounded-2xl transition-all hover:bg-slate-100 dark:hover:bg-slate-900/50">
-                          <div className="flex items-center gap-3">
-                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.fill }} />
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">{categoryChartConfig[item.name]?.label || item.name}</p>
-                              <p className="text-[10px] text-slate-500 font-bold">{percentage}%</p>
+            {(() => {
+              const currentChartData = activeChart === 'categoria' 
+                ? chartDataConFills 
+                : (stats.proveedor_chart_data || []).map((item, index) => ({
+                    ...item,
+                    fill: COLORS[index % COLORS.length]
+                  }));
+
+              if (currentChartData.length === 0) {
+                return (
+                  <div className="h-64 flex items-center justify-center text-slate-500 font-medium italic bg-slate-50 dark:bg-slate-950/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+                    No hay datos disponibles para esta selección
+                  </div>
+                );
+              }
+
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                  <div className="h-64 w-full">
+                    <ChartContainer config={categoryChartConfig} className="h-full w-full">
+                      <PieChart>
+                        <Pie
+                          data={currentChartData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={65}
+                          outerRadius={90}
+                          paddingAngle={3}
+                          dataKey="value"
+                          stroke="rgba(0,0,0,0)"
+                        >
+                          {currentChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <ChartTooltip content={<ChartTooltipContent config={categoryChartConfig} formatter={(value) => `$${parseFloat(value).toLocaleString('es-MX', {minimumFractionDigits: 2})}`} />} />
+                      </PieChart>
+                    </ChartContainer>
+                  </div>
+                  
+                  <div className="space-y-2.5 max-h-[16.5rem] overflow-y-auto pr-2 custom-scrollbar">
+                    {(() => {
+                      const total = currentChartData.reduce((acc, curr) => acc + curr.value, 0);
+                      return currentChartData.map((item) => {
+                        const percentage = total > 0 ? ((item.value / total) * 100).toFixed(1) : '0.0';
+                        return (
+                          <div key={item.name} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800/50 rounded-2xl transition-all hover:bg-slate-100 dark:hover:bg-slate-900/50">
+                            <div className="flex items-center gap-3">
+                              <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.fill }} />
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate" title={item.name}>
+                                  {activeChart === 'categoria' ? (categoryChartConfig[item.name]?.label || item.name) : item.name}
+                                </p>
+                                <p className="text-[10px] text-slate-500 font-bold">{percentage}%</p>
+                              </div>
                             </div>
+                            <span className="text-xs font-black text-slate-900 dark:text-white shrink-0 ml-4 font-mono">
+                              ${item.value.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                            </span>
                           </div>
-                          <span className="text-xs font-black text-slate-900 dark:text-white shrink-0 ml-4 font-mono">
-                            ${item.value.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                          </span>
-                        </div>
-                      );
-                    });
-                  })()}
+                        );
+                      });
+                    })()}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="h-64 flex items-center justify-center text-slate-500 font-medium italic bg-slate-50 dark:bg-slate-950/20 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
-                No hay datos disponibles para esta selección
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       )}

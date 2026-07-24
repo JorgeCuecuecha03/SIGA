@@ -149,6 +149,18 @@ const SolicitudesCambios = () => {
       <div className="grid grid-cols-1 gap-4">
         {fieldsToRender.map((key) => {
           const propuesto = cambios_propuestos[key];
+          const rawOriginal = factura_original[key];
+
+          const normalizeForCompare = (val) => {
+            if (val === null || val === undefined || val === 'null' || val === '') return '';
+            if (Array.isArray(val)) return val.map(String).sort().join(',');
+            return String(val);
+          };
+
+          const isChanged = normalizeForCompare(rawOriginal) !== normalizeForCompare(propuesto);
+
+          if (!isChanged) return null;
+
           const original = getOriginalValue(key, factura_original);
           
           let renderedOriginal = resolveValue(key, original, true);
@@ -160,41 +172,28 @@ const SolicitudesCambios = () => {
           if (renderedPropuesto === 'false') renderedPropuesto = 'No';
           if (renderedPropuesto === 'true') renderedPropuesto = 'Sí';
 
-          const isChanged = renderedOriginal !== renderedPropuesto;
-
           return (
-            <div key={key} className={`p-4 rounded-xl border transition-colors ${isChanged ? 'bg-amber-50/30 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700/50 shadow-sm' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 opacity-60'}`}>
-              <div className="flex items-center gap-2 mb-3 border-b border-slate-100 dark:border-slate-800 pb-2">
-                <span className={`text-xs font-bold uppercase ${isChanged ? 'text-amber-600 dark:text-amber-500' : 'text-slate-500'}`}>
+            <div key={key} className="p-4 rounded-xl border transition-colors bg-amber-50/30 dark:bg-amber-900/10 border-amber-300 dark:border-amber-700/50 shadow-sm">
+              <div className="flex items-center gap-2 mb-3 border-b border-amber-100 dark:border-amber-800/30 pb-2">
+                <span className="text-xs font-bold uppercase text-amber-600 dark:text-amber-500">
                   {key.replace(/_/g, ' ')}
                 </span>
-                {isChanged && <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold">Modificado</span>}
+                <span className="text-[10px] bg-amber-500 text-white px-2 py-0.5 rounded-full font-bold">Modificado</span>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {isChanged ? (
-                  <>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-slate-400 font-semibold mb-1 uppercase tracking-wider">Valor Original</span>
-                      <span className="text-sm font-medium text-slate-600 dark:text-slate-400 break-all bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg" title={original}>
-                        {renderedOriginal === 'Vacío' ? <span className="text-slate-400 italic">Vacío</span> : renderedOriginal}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-semibold mb-1 uppercase tracking-wider text-amber-500">Nuevo Valor Propuesto</span>
-                      <span className="text-sm font-bold break-all p-2 rounded-lg border text-slate-900 dark:text-white bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50" title={propuesto}>
-                        {renderedPropuesto === 'Vacío' ? <span className="text-slate-400 italic">Vacío</span> : renderedPropuesto}
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col md:col-span-2">
-                    <span className="text-[10px] text-slate-400 font-semibold mb-1 uppercase tracking-wider">Valor Actual</span>
-                    <span className="text-sm font-medium text-slate-600 dark:text-slate-400 break-all bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg" title={original}>
-                      {renderedOriginal === 'Vacío' ? <span className="text-slate-400 italic">Vacío</span> : renderedOriginal}
-                    </span>
-                  </div>
-                )}
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-semibold mb-1 uppercase tracking-wider">Valor Original</span>
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-400 break-all bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg" title={original}>
+                    {renderedOriginal === 'Vacío' ? <span className="text-slate-400 italic">Vacío</span> : renderedOriginal}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-semibold mb-1 uppercase tracking-wider text-amber-500">Nuevo Valor Propuesto</span>
+                  <span className="text-sm font-bold break-all p-2 rounded-lg border text-slate-900 dark:text-white bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50" title={propuesto}>
+                    {renderedPropuesto === 'Vacío' ? <span className="text-slate-400 italic">Vacío</span> : renderedPropuesto}
+                  </span>
+                </div>
               </div>
             </div>
           );
