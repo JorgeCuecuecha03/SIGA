@@ -48,7 +48,12 @@ const DashboardLayout = () => {
   const isAdmin = user?.rol === 'admin_general' || user?.rol === 'admin';
 
   const toggleMenu = (label) => {
-    setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }));
+    setOpenMenus(prev => {
+      const item = mainItems.find(i => i.label === label);
+      const isActive = item?.subItems?.some(sub => location.pathname === sub.path);
+      const currentIsOpen = prev[label] !== undefined ? prev[label] : isActive;
+      return { ...prev, [label]: !currentIsOpen };
+    });
   };
 
   const mainItems = [
@@ -91,7 +96,7 @@ const DashboardLayout = () => {
       if (filteredSubItems.length === 0) return null;
       
       const isActive = item.subItems.some(sub => location.pathname === sub.path);
-      const isOpen = openMenus[item.label] || isActive;
+      const isOpen = openMenus[item.label] !== undefined ? openMenus[item.label] : isActive;
       
       return (
         <div key={item.label} className="mt-1">
