@@ -60,6 +60,7 @@ const ListaVehiculos = () => {
   const [allFacturas, setAllFacturas] = useState([]);
   const [cargasCombustible, setCargasCombustible] = useState([]);
   const [loadingFacturas, setLoadingFacturas] = useState(false);
+  const [modalSearchTerm, setModalSearchTerm] = useState('');
   const { user } = React.useContext(AuthContext);
   const isLector = user?.rol === 'lector_gastos';
   const [ordenesTrabajo, setOrdenesTrabajo] = useState([]);
@@ -136,6 +137,7 @@ const ListaVehiculos = () => {
   };
 
   const openCajaFacturasModal = async (cajaObj) => {
+    setModalSearchTerm('');
     setSelectedCaja(cajaObj);
     setLoadingCajaFacturas(true);
     setShowCajaFacturasModal(true);
@@ -160,6 +162,7 @@ const ListaVehiculos = () => {
   };
 
   const openVariadoFacturasModal = async (variadoObj) => {
+    setModalSearchTerm('');
     setSelectedVariado(variadoObj);
     setLoadingVariadoFacturas(true);
     setShowVariadoFacturasModal(true);
@@ -455,10 +458,31 @@ const ListaVehiculos = () => {
   };
 
   const openFacturasModal = async (vehiculo) => {
+    setModalSearchTerm('');
     setSelectedVehiculo(vehiculo);
     const data = await fetchVehiculoFacturas(vehiculo.id);
     setFacturas(data);
     setShowFacturasModal(true);
+  };
+
+  const filterFacturasList = (list) => {
+    if (!modalSearchTerm.trim()) return list;
+    const term = modalSearchTerm.toLowerCase();
+    return list.filter(f => {
+      const folio = (f.folio || '').toLowerCase();
+      const taller = (f.taller_nombre || '').toLowerCase();
+      const proveedor = (f.proveedor_nombre || '').toLowerCase();
+      const rfc = (f.rfc_emisor || '').toLowerCase();
+      const razonSocial = (f.razon_social_emisor || '').toLowerCase();
+      const descripcion = (f.descripcion || '').toLowerCase();
+
+      return folio.includes(term) ||
+             taller.includes(term) ||
+             proveedor.includes(term) ||
+             rfc.includes(term) ||
+             razonSocial.includes(term) ||
+             descripcion.includes(term);
+    });
   };
 
   const formatMotivoEspera = (motivo) => {
@@ -1203,68 +1227,108 @@ const ListaVehiculos = () => {
                   </Link>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-                  {facturas.map(f => (
-                    <div key={f.id} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-xl lg:rounded-2xl p-4 lg:p-5 hover:border-blue-500/50 transition-colors shadow-sm">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="min-w-0">
-                          <p className="text-slate-400 dark:text-slate-400 text-[10px] font-bold uppercase mb-1">Folio</p>
-                          <p className="text-slate-900 dark:text-white font-mono text-base lg:text-lg font-bold truncate">{f.folio}</p>
-                        </div>
-                        <div className="text-right shrink-0 ml-4">
-                          <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Monto {f.es_compartida ? '(Asignado)' : ''}</p>
-                          <p className={`font-bold text-lg lg:text-xl ${f.cancelado ? 'text-rose-500 line-through' : 'text-emerald-400'}`}>
-                            ${parseFloat(f.monto_especifico || f.monto).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                          </p>
-                          {f.es_compartida && (
-                            <p className="text-[8px] text-purple-400 font-bold uppercase mt-1">Factura Compartida</p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="mb-4 space-y-3">
-                        <div>
-                          <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Taller / Proveedor</p>
-                          <p className="text-slate-700 dark:text-slate-300 font-bold text-xs truncate flex items-center gap-2">
-                            <Wrench size={12} className="text-blue-500 shrink-0" />
-                            {f.taller_nombre || 'No asignado'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Descripción</p>
-                          <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed font-medium line-clamp-2">
-                            {f.cancelado && <span className="text-rose-500 font-bold mr-1">CANCELADA -</span>}
-                            {f.descripcion || 'Sin descripción'}
-                          </p>
-                          {f.cancelado && f.motivo_cancelacion && (
-                            <p className="text-rose-400 text-[10px] mt-1 font-bold italic line-clamp-2" title={f.motivo_cancelacion}>
-                              Motivo: {f.motivo_cancelacion}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row justify-between items-center mt-4 lg:mt-6 pt-4 border-t border-slate-200 dark:border-slate-700/50 gap-3">
-                        <p className="text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
-                          <Calendar size={14} /> {f.fecha}
-                        </p>
-                        
-                        {f.archivo_escaneado ? (
-                          <a 
-                            href={formatMediaUrl(f.archivo_escaneado)} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg lg:rounded-xl text-xs lg:text-sm font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-95"
-                          >
-                            Ver Documento
-                          </a>
-                        ) : (
-                          <span className="text-rose-400 text-[10px] lg:text-xs font-bold bg-rose-500/10 px-3 py-1.5 rounded-lg">Sin Imagen</span>
-                        )}
-                      </div>
+                <>
+                  <div className="relative mb-4 sm:mb-6">
+                    <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Search size={18} />
                     </div>
-                  ))}
-                </div>
+                    <input
+                      type="text"
+                      placeholder="Buscar por folio (ej: 0F40), taller/proveedor o descripción..."
+                      value={modalSearchTerm}
+                      onChange={(e) => setModalSearchTerm(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all shadow-inner"
+                    />
+                    {modalSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setModalSearchTerm('')}
+                        className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  {filterFacturasList(facturas).length === 0 ? (
+                    <div className="text-center py-12 space-y-3">
+                      <Search size={40} className="text-slate-300 dark:text-slate-600 mx-auto" />
+                      <p className="text-slate-500 dark:text-slate-400 text-sm lg:text-base font-medium">
+                        No se encontraron facturas que coincidan con "<span className="font-bold text-slate-700 dark:text-slate-200">{modalSearchTerm}</span>".
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setModalSearchTerm('')}
+                        className="text-xs text-blue-500 font-bold hover:underline"
+                      >
+                        Limpiar filtro de búsqueda
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+                      {filterFacturasList(facturas).map(f => (
+                        <div key={f.id} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-xl lg:rounded-2xl p-4 lg:p-5 hover:border-blue-500/50 transition-colors shadow-sm">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="min-w-0">
+                              <p className="text-slate-400 dark:text-slate-400 text-[10px] font-bold uppercase mb-1">Folio</p>
+                              <p className="text-slate-900 dark:text-white font-mono text-base lg:text-lg font-bold truncate">{f.folio}</p>
+                            </div>
+                            <div className="text-right shrink-0 ml-4">
+                              <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Monto {f.es_compartida ? '(Asignado)' : ''}</p>
+                              <p className={`font-bold text-lg lg:text-xl ${f.cancelado ? 'text-rose-500 line-through' : 'text-emerald-400'}`}>
+                                ${parseFloat(f.monto_especifico || f.monto).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                              </p>
+                              {f.es_compartida && (
+                                <p className="text-[8px] text-purple-400 font-bold uppercase mt-1">Factura Compartida</p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="mb-4 space-y-3">
+                            <div>
+                              <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Taller / Proveedor</p>
+                              <p className="text-slate-700 dark:text-slate-300 font-bold text-xs truncate flex items-center gap-2">
+                                <Wrench size={12} className="text-blue-500 shrink-0" />
+                                {f.taller_nombre || 'No asignado'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Descripción</p>
+                              <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed font-medium line-clamp-2">
+                                {f.cancelado && <span className="text-rose-500 font-bold mr-1">CANCELADA -</span>}
+                                {f.descripcion || 'Sin descripción'}
+                              </p>
+                              {f.cancelado && f.motivo_cancelacion && (
+                                <p className="text-rose-400 text-[10px] mt-1 font-bold italic line-clamp-2" title={f.motivo_cancelacion}>
+                                  Motivo: {f.motivo_cancelacion}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col sm:flex-row justify-between items-center mt-4 lg:mt-6 pt-4 border-t border-slate-200 dark:border-slate-700/50 gap-3">
+                            <p className="text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
+                              <Calendar size={14} /> {f.fecha}
+                            </p>
+                            
+                            {f.archivo_escaneado ? (
+                              <a 
+                                href={formatMediaUrl(f.archivo_escaneado)} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg lg:rounded-xl text-xs lg:text-sm font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-95"
+                              >
+                                Ver Documento
+                              </a>
+                            ) : (
+                              <span className="text-rose-400 text-[10px] lg:text-xs font-bold bg-rose-500/10 px-3 py-1.5 rounded-lg">Sin Imagen</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1688,68 +1752,108 @@ const ListaVehiculos = () => {
                   </Link>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-                  {cajaFacturas.map(f => (
-                    <div key={f.id} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-xl lg:rounded-2xl p-4 lg:p-5 hover:border-blue-500/50 transition-colors shadow-sm">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="min-w-0">
-                          <p className="text-slate-400 dark:text-slate-400 text-[10px] font-bold uppercase mb-1">Folio</p>
-                          <p className="text-slate-900 dark:text-white font-mono text-base lg:text-lg font-bold truncate">{f.folio}</p>
-                        </div>
-                        <div className="text-right shrink-0 ml-4">
-                          <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Monto {f.es_compartida ? '(Asignado)' : ''}</p>
-                          <p className={`font-bold text-lg lg:text-xl ${f.cancelado ? 'text-rose-500 line-through' : 'text-emerald-400'}`}>
-                            ${parseFloat(f.monto_especifico || f.monto).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                          </p>
-                          {f.es_compartida && (
-                            <p className="text-[8px] text-purple-400 font-bold uppercase mt-1">Factura Compartida</p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="mb-4 space-y-3">
-                        <div>
-                          <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Taller / Proveedor</p>
-                          <p className="text-slate-700 dark:text-slate-300 font-bold text-xs truncate flex items-center gap-2">
-                            <Wrench size={12} className="text-blue-500 shrink-0" />
-                            {f.taller_nombre || 'No asignado'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Descripción</p>
-                          <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed font-medium line-clamp-2">
-                            {f.cancelado && <span className="text-rose-500 font-bold mr-1">CANCELADA -</span>}
-                            {f.descripcion || 'Sin descripción'}
-                          </p>
-                          {f.cancelado && f.motivo_cancelacion && (
-                            <p className="text-rose-400 text-[10px] mt-1 font-bold italic line-clamp-2" title={f.motivo_cancelacion}>
-                              Motivo: {f.motivo_cancelacion}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row justify-between items-center mt-4 lg:mt-6 pt-4 border-t border-slate-200 dark:border-slate-700/50 gap-3">
-                        <p className="text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
-                          <Calendar size={14} /> {f.fecha}
-                        </p>
-                        
-                        {f.archivo_escaneado ? (
-                          <a 
-                            href={formatMediaUrl(f.archivo_escaneado)} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg lg:rounded-xl text-xs lg:text-sm font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-95"
-                          >
-                            Ver Documento
-                          </a>
-                        ) : (
-                          <span className="text-rose-400 text-[10px] lg:text-xs font-bold bg-rose-500/10 px-3 py-1.5 rounded-lg">Sin Imagen</span>
-                        )}
-                      </div>
+                <>
+                  <div className="relative mb-4 sm:mb-6">
+                    <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Search size={18} />
                     </div>
-                  ))}
-                </div>
+                    <input
+                      type="text"
+                      placeholder="Buscar por folio (ej: 0F40), taller/proveedor o descripción..."
+                      value={modalSearchTerm}
+                      onChange={(e) => setModalSearchTerm(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all shadow-inner"
+                    />
+                    {modalSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setModalSearchTerm('')}
+                        className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  {filterFacturasList(cajaFacturas).length === 0 ? (
+                    <div className="text-center py-12 space-y-3">
+                      <Search size={40} className="text-slate-300 dark:text-slate-600 mx-auto" />
+                      <p className="text-slate-500 dark:text-slate-400 text-sm lg:text-base font-medium">
+                        No se encontraron facturas que coincidan con "<span className="font-bold text-slate-700 dark:text-slate-200">{modalSearchTerm}</span>".
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setModalSearchTerm('')}
+                        className="text-xs text-blue-500 font-bold hover:underline"
+                      >
+                        Limpiar filtro de búsqueda
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+                      {filterFacturasList(cajaFacturas).map(f => (
+                        <div key={f.id} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-xl lg:rounded-2xl p-4 lg:p-5 hover:border-blue-500/50 transition-colors shadow-sm">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="min-w-0">
+                              <p className="text-slate-400 dark:text-slate-400 text-[10px] font-bold uppercase mb-1">Folio</p>
+                              <p className="text-slate-900 dark:text-white font-mono text-base lg:text-lg font-bold truncate">{f.folio}</p>
+                            </div>
+                            <div className="text-right shrink-0 ml-4">
+                              <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Monto {f.es_compartida ? '(Asignado)' : ''}</p>
+                              <p className={`font-bold text-lg lg:text-xl ${f.cancelado ? 'text-rose-500 line-through' : 'text-emerald-400'}`}>
+                                ${parseFloat(f.monto_especifico || f.monto).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                              </p>
+                              {f.es_compartida && (
+                                <p className="text-[8px] text-purple-400 font-bold uppercase mt-1">Factura Compartida</p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="mb-4 space-y-3">
+                            <div>
+                              <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Taller / Proveedor</p>
+                              <p className="text-slate-700 dark:text-slate-300 font-bold text-xs truncate flex items-center gap-2">
+                                <Wrench size={12} className="text-blue-500 shrink-0" />
+                                {f.taller_nombre || 'No asignado'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Descripción</p>
+                              <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed font-medium line-clamp-2">
+                                {f.cancelado && <span className="text-rose-500 font-bold mr-1">CANCELADA -</span>}
+                                {f.descripcion || 'Sin descripción'}
+                              </p>
+                              {f.cancelado && f.motivo_cancelacion && (
+                                <p className="text-rose-400 text-[10px] mt-1 font-bold italic line-clamp-2" title={f.motivo_cancelacion}>
+                                  Motivo: {f.motivo_cancelacion}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col sm:flex-row justify-between items-center mt-4 lg:mt-6 pt-4 border-t border-slate-200 dark:border-slate-700/50 gap-3">
+                            <p className="text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
+                              <Calendar size={14} /> {f.fecha}
+                            </p>
+                            
+                            {f.archivo_escaneado ? (
+                              <a 
+                                href={formatMediaUrl(f.archivo_escaneado)} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg lg:rounded-xl text-xs lg:text-sm font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-95"
+                              >
+                                Ver Documento
+                              </a>
+                            ) : (
+                              <span className="text-rose-400 text-[10px] lg:text-xs font-bold bg-rose-500/10 px-3 py-1.5 rounded-lg">Sin Imagen</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1812,68 +1916,108 @@ const ListaVehiculos = () => {
                   </Link>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-                  {variadoFacturas.map(f => (
-                    <div key={f.id} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-xl lg:rounded-2xl p-4 lg:p-5 hover:border-blue-500/50 transition-colors shadow-sm">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="min-w-0">
-                          <p className="text-slate-400 dark:text-slate-400 text-[10px] font-bold uppercase mb-1">Folio</p>
-                          <p className="text-slate-900 dark:text-white font-mono text-base lg:text-lg font-bold truncate">{f.folio}</p>
-                        </div>
-                        <div className="text-right shrink-0 ml-4">
-                          <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Monto {f.es_compartida ? '(Asignado)' : ''}</p>
-                          <p className={`font-bold text-lg lg:text-xl ${f.cancelado ? 'text-rose-500 line-through' : 'text-emerald-400'}`}>
-                            ${parseFloat(f.monto_especifico || f.monto).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                          </p>
-                          {f.es_compartida && (
-                            <p className="text-[8px] text-purple-400 font-bold uppercase mt-1">Factura Compartida</p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="mb-4 space-y-3">
-                        <div>
-                          <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Taller / Proveedor</p>
-                          <p className="text-slate-700 dark:text-slate-300 font-bold text-xs truncate flex items-center gap-2">
-                            <Wrench size={12} className="text-blue-500 shrink-0" />
-                            {f.taller_nombre || 'No asignado'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Descripción</p>
-                          <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed font-medium line-clamp-2">
-                            {f.cancelado && <span className="text-rose-500 font-bold mr-1">CANCELADA -</span>}
-                            {f.descripcion || 'Sin descripción'}
-                          </p>
-                          {f.cancelado && f.motivo_cancelacion && (
-                            <p className="text-rose-400 text-[10px] mt-1 font-bold italic line-clamp-2" title={f.motivo_cancelacion}>
-                              Motivo: {f.motivo_cancelacion}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row justify-between items-center mt-4 lg:mt-6 pt-4 border-t border-slate-200 dark:border-slate-700/50 gap-3">
-                        <p className="text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
-                          <Calendar size={14} /> {f.fecha}
-                        </p>
-                        
-                        {f.archivo_escaneado ? (
-                          <a 
-                            href={formatMediaUrl(f.archivo_escaneado)} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            className="w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg lg:rounded-xl text-xs lg:text-sm font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-95"
-                          >
-                            Ver Documento
-                          </a>
-                        ) : (
-                          <span className="text-rose-400 text-[10px] lg:text-xs font-bold bg-rose-500/10 px-3 py-1.5 rounded-lg">Sin Imagen</span>
-                        )}
-                      </div>
+                <>
+                  <div className="relative mb-4 sm:mb-6">
+                    <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none text-slate-400">
+                      <Search size={18} />
                     </div>
-                  ))}
-                </div>
+                    <input
+                      type="text"
+                      placeholder="Buscar por folio (ej: 0F40), taller/proveedor o descripción..."
+                      value={modalSearchTerm}
+                      onChange={(e) => setModalSearchTerm(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-10 py-2.5 text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all shadow-inner"
+                    />
+                    {modalSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setModalSearchTerm('')}
+                        className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  {filterFacturasList(variadoFacturas).length === 0 ? (
+                    <div className="text-center py-12 space-y-3">
+                      <Search size={40} className="text-slate-300 dark:text-slate-600 mx-auto" />
+                      <p className="text-slate-500 dark:text-slate-400 text-sm lg:text-base font-medium">
+                        No se encontraron facturas que coincidan con "<span className="font-bold text-slate-700 dark:text-slate-200">{modalSearchTerm}</span>".
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setModalSearchTerm('')}
+                        className="text-xs text-blue-500 font-bold hover:underline"
+                      >
+                        Limpiar filtro de búsqueda
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+                      {filterFacturasList(variadoFacturas).map(f => (
+                        <div key={f.id} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-xl lg:rounded-2xl p-4 lg:p-5 hover:border-blue-500/50 transition-colors shadow-sm">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="min-w-0">
+                              <p className="text-slate-400 dark:text-slate-400 text-[10px] font-bold uppercase mb-1">Folio</p>
+                              <p className="text-slate-900 dark:text-white font-mono text-base lg:text-lg font-bold truncate">{f.folio}</p>
+                            </div>
+                            <div className="text-right shrink-0 ml-4">
+                              <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Monto {f.es_compartida ? '(Asignado)' : ''}</p>
+                              <p className={`font-bold text-lg lg:text-xl ${f.cancelado ? 'text-rose-500 line-through' : 'text-emerald-400'}`}>
+                                ${parseFloat(f.monto_especifico || f.monto).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                              </p>
+                              {f.es_compartida && (
+                                <p className="text-[8px] text-purple-400 font-bold uppercase mt-1">Factura Compartida</p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="mb-4 space-y-3">
+                            <div>
+                              <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Taller / Proveedor</p>
+                              <p className="text-slate-700 dark:text-slate-300 font-bold text-xs truncate flex items-center gap-2">
+                                <Wrench size={12} className="text-blue-500 shrink-0" />
+                                {f.taller_nombre || 'No asignado'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-slate-400 text-[10px] font-bold uppercase mb-1">Descripción</p>
+                              <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed font-medium line-clamp-2">
+                                {f.cancelado && <span className="text-rose-500 font-bold mr-1">CANCELADA -</span>}
+                                {f.descripcion || 'Sin descripción'}
+                              </p>
+                              {f.cancelado && f.motivo_cancelacion && (
+                                <p className="text-rose-400 text-[10px] mt-1 font-bold italic line-clamp-2" title={f.motivo_cancelacion}>
+                                  Motivo: {f.motivo_cancelacion}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col sm:flex-row justify-between items-center mt-4 lg:mt-6 pt-4 border-t border-slate-200 dark:border-slate-700/50 gap-3">
+                            <p className="text-slate-500 dark:text-slate-400 text-xs flex items-center gap-2">
+                              <Calendar size={14} /> {f.fecha}
+                            </p>
+                            
+                            {f.archivo_escaneado ? (
+                              <a 
+                                href={formatMediaUrl(f.archivo_escaneado)} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className="w-full sm:w-auto text-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg lg:rounded-xl text-xs lg:text-sm font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-95"
+                              >
+                                Ver Documento
+                              </a>
+                            ) : (
+                              <span className="text-rose-400 text-[10px] lg:text-xs font-bold bg-rose-500/10 px-3 py-1.5 rounded-lg">Sin Imagen</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
