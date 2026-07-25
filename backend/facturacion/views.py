@@ -80,8 +80,35 @@ class FacturaViewSet(viewsets.ModelViewSet):
     ordering_fields = ['fecha', 'monto']
 
     def get_queryset(self):
-        queryset = Factura.objects.all().order_by('-fecha')
+        queryset = Factura.objects.all().select_related(
+            'unidad', 'caja', 'variado', 'producto', 'taller', 'proveedor', 'ticket'
+        ).prefetch_related(
+            'detalles_unidades__unidad',
+            'detalles_unidades__caja',
+            'detalles_unidades__variado',
+            'unidades',
+            'cajas',
+            'variados'
+        ).order_by('-fecha')
         
+        # Filtrado por unidad, caja, variado
+        unidad_id = self.request.query_params.get('unidad')
+        caja_id = self.request.query_params.get('caja')
+        variado_id = self.request.query_params.get('variado')
+
+        if unidad_id:
+            queryset = queryset.filter(
+                Q(unidad_id=unidad_id) | Q(detalles_unidades__unidad_id=unidad_id) | Q(unidades__id=unidad_id)
+            ).distinct()
+        if caja_id:
+            queryset = queryset.filter(
+                Q(caja_id=caja_id) | Q(detalles_unidades__caja_id=caja_id) | Q(cajas__id=caja_id)
+            ).distinct()
+        if variado_id:
+            queryset = queryset.filter(
+                Q(variado_id=variado_id) | Q(detalles_unidades__variado_id=variado_id) | Q(variados__id=variado_id)
+            ).distinct()
+            
         # Filtrado por rango de fechas
         fecha_inicio = self.request.query_params.get('fecha_inicio')
         fecha_fin = self.request.query_params.get('fecha_fin')

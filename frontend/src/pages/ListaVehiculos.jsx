@@ -140,7 +140,7 @@ const ListaVehiculos = () => {
     setLoadingCajaFacturas(true);
     setShowCajaFacturasModal(true);
     try {
-      const res = await api.get('facturas/', { params: { nopaged: true } });
+      const res = await api.get('facturas/', { params: { caja: cajaObj.id, nopaged: true } });
       const data = res.data.results || res.data;
       const filtered = data.reduce((acc, f) => {
         const detalle = f.detalles_unidades?.find(d => d.caja === cajaObj.id);
@@ -164,7 +164,7 @@ const ListaVehiculos = () => {
     setLoadingVariadoFacturas(true);
     setShowVariadoFacturasModal(true);
     try {
-      const res = await api.get('facturas/', { params: { nopaged: true } });
+      const res = await api.get('facturas/', { params: { variado: variadoObj.id, nopaged: true } });
       const data = res.data.results || res.data;
       const filtered = data.reduce((acc, f) => {
         const detalle = f.detalles_unidades?.find(d => d.variado === variadoObj.id);
@@ -368,7 +368,7 @@ const ListaVehiculos = () => {
   const fetchVehiculoFacturas = async (vehiculoId) => {
     setLoadingFacturas(true);
     try {
-      const res = await api.get('facturas/', { params: { nopaged: true } });
+      const res = await api.get('facturas/', { params: { unidad: vehiculoId, nopaged: true } });
       const data = res.data.results || res.data;
       const filtered = data.reduce((acc, f) => {
         // Buscar si esta unidad tiene un monto asignado específicamente
