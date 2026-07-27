@@ -39,16 +39,52 @@ class HistorialAccionSerializer(serializers.ModelSerializer):
 
 class UsuarioSerializer(serializers.ModelSerializer):
     rol = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'rol')
+        fields = ('id', 'username', 'first_name', 'last_name', 'email', 'rol', 'avatar')
 
     def get_rol(self, obj):
         try:
             return obj.perfil.rol
         except Perfil.DoesNotExist:
             return 'capturista'
+
+    def get_avatar(self, obj):
+        try:
+            return obj.perfil.avatar
+        except Perfil.DoesNotExist:
+            return 'User'
+
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    avatar = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'password', 'avatar')
+
+    def update(self, instance, validated_data):
+        avatar = validated_data.pop('avatar', None)
+        password = validated_data.pop('password', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+            
+        if password:
+            instance.set_password(password)
+            
+        instance.save()
+
+        if avatar:
+            perfil, created = Perfil.objects.get_or_create(user=instance)
+            perfil.avatar = avatar
+            perfil.save()
+
+        return instance
+
+
 
 class UserManagementSerializer(serializers.ModelSerializer):
     rol = serializers.ChoiceField(choices=Perfil.ROLES_CHOICES, write_only=True, required=False)

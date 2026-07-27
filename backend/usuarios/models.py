@@ -12,6 +12,7 @@ class Perfil(models.Model):
     )
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='perfil')
     rol = models.CharField(max_length=20, choices=ROLES_CHOICES, default='capturista')
+    avatar = models.CharField(max_length=50, default='User', blank=True, null=True, verbose_name="Icono de Avatar")
 
     def __str__(self):
         return f"{self.user.username} - {self.get_rol_display()}"

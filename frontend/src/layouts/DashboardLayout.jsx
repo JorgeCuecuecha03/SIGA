@@ -1,6 +1,7 @@
 import React, { useState, useContext } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import PerfilUsuarioModal, { AVATAR_OPTIONS } from '../components/PerfilUsuarioModal';
 import logo from '../assets/logo_neon.png';
 import {
   LayoutDashboard,
@@ -36,6 +37,7 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCapturistaOpen, setIsCapturistaOpen] = useState(false);
+  const [isPerfilModalOpen, setIsPerfilModalOpen] = useState(false);
   const [openMenus, setOpenMenus] = useState({});
   const { user, logout } = useContext(AuthContext);
   const { theme, toggleTheme } = useTheme();
@@ -270,14 +272,23 @@ const DashboardLayout = () => {
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
-            <div className="flex items-center gap-3 lg:gap-4 border-l border-slate-200 dark:border-slate-800 pl-4 lg:pl-6">
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-bold text-slate-900 dark:text-white capitalize leading-tight">{user?.rol || 'Usuario'}</p>
-              <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest">{user?.username || 'user'}</p>
-            </div>
-            <div className="h-9 w-9 lg:h-10 lg:w-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold border-2 border-white dark:border-slate-700 shrink-0 uppercase shadow-lg">
-              {user?.username ? user.username.substring(0, 2) : 'US'}
-            </div>
+            <div 
+              className="flex items-center gap-3 lg:gap-4 border-l border-slate-200 dark:border-slate-800 pl-4 lg:pl-6 cursor-pointer group"
+              onClick={() => setIsPerfilModalOpen(true)}
+            >
+              <div className="hidden sm:block text-right">
+                <p className="text-sm font-bold text-slate-900 dark:text-white capitalize leading-tight group-hover:text-blue-500 transition-colors">{user?.rol || 'Usuario'}</p>
+                <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate max-w-[120px]">
+                  {user?.first_name ? `${user.first_name} ${user.last_name || ''}` : (user?.username || 'user')}
+                </p>
+              </div>
+              <div className="h-9 w-9 lg:h-10 lg:w-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white border-2 border-white dark:border-slate-700 shrink-0 shadow-lg group-hover:scale-105 transition-transform overflow-hidden">
+                {user?.avatar && user.avatar !== 'User' ? (
+                  AVATAR_OPTIONS.find(a => a.id === user.avatar)?.icon || <span className="font-bold uppercase">{user.username?.substring(0, 2)}</span>
+                ) : (
+                  <span className="font-bold uppercase">{user?.username ? user.username.substring(0, 2) : 'US'}</span>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -288,6 +299,10 @@ const DashboardLayout = () => {
           </div>
         </div>
       </main>
+
+      {isPerfilModalOpen && (
+        <PerfilUsuarioModal onClose={() => setIsPerfilModalOpen(false)} />
+      )}
     </div>
   );
 };
