@@ -55,7 +55,7 @@ const PerfilUsuarioModal = ({ onClose }) => {
         delete payload.password;
       }
       
-      const response = await api.put('usuarios/me/', payload);
+      const response = await api.put('auth/me/', payload);
       setUser(response.data);
       
       notify.success("Perfil actualizado correctamente");
