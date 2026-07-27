@@ -1,0 +1,337 @@
+================================================================================
+          SISTEMA INTEGRAL DE GESTIÓN DE AUTOTRANSPORTE (SIGA)
+   DOCUMENTO DE ANÁLISIS DE REQUERIMIENTOS FUNCIONALES, NO FUNCIONALES
+                      Y ARQUITECTURA DE IMPLEMENTACIÓN
+================================================================================
+
+FECHA DE GENERACIÓN: 24 de Julio de 2026
+PROYECTO: SIGA / Autrotransportes
+VERSIÓN: 2.0.0
+ESTADO: Producción / En Operación
+
+--------------------------------------------------------------------------------
+1. INFORMACIÓN Y RESUMEN EJECUTIVO
+--------------------------------------------------------------------------------
+
+1.1 PROPÓSITO DEL DOCUMENTO
+Este documento constituye la especificación formal y detallada de los Requerimientos Funcionales (RF), Requerimientos No Funcionales (RNF), Modelo de Dominio y Requerimientos de Implementación Técnica del Sistema Integral de Gestión de Autotransporte (SIGA). Sirve como guía de referencia técnica, auditoría de software y arquitectura del sistema para desarrolladores, administradores de infraestructura y usuarios del sistema.
+
+1.2 OBJETIVO DEL SISTEMA
+SIGA es una plataforma web integral orientada al control operativo, logístico y financiero de empresas de autotransporte de carga y logística. Su objetivo es centralizar la gestión de la flota (Tractocamiones, Cajas/Remolques y Vehículos Variados), el control de tráfico y choferes, la medición precisa de consumo y rendimiento de combustible, la administración de mantenimiento preventivo/correctivo, y el flujo completo de facturación, contra-recibos y tickets de compra.
+
+1.3 ALCANCE DEL SISTEMA
+El sistema abarca las siguientes áreas operativas:
+- Administración de la flota vehicular y estado operacional en tiempo real.
+- Control de personal operativo (operadores, choferes y ayudantes).
+- Planeación, monitoreo y bitácora de viajes y rutas (CEDIS, clientes y transporte de personal).
+- Registro diario y control volumétrico/financiero de cargas de combustible con algoritmo de recálculo de rendimiento cronológico (km/L).
+- Gestión de talleres internos y externos, órdenes de trabajo y mantenimiento.
+- Captura, prorrateo y desglose de facturas y tickets de gasto a nivel de unidad.
+- Emisión e impresión de Contra-Recibos para proveedores en formato PDF.
+- Agente de escaneo físico de documentos integrado mediante periféricos en red local.
+- Reportes consolidados, análisis financiero y proyecciones de gasto.
+- Auditoría general, solicitudes de cambio y control de acceso basado en roles (RBAC).
+
+
+--------------------------------------------------------------------------------
+2. REQUERIMIENTOS DE IMPLEMENTACIÓN Y ARQUITECTURA TÉCNICA
+--------------------------------------------------------------------------------
+
+2.1 ARQUITECTURA DE SOFTWARE
+El sistema está diseñado bajo una arquitectura de Cliente-Servidor desacoplada:
+- Frontend: Single Page Application (SPA) reactiva y moderna.
+- Backend: RESTful API desarrollada en Django / Django REST Framework.
+- Agente Periférico: Agente local de captura y escaneo de hardware.
+
+2.2 STACK TECNOLÓGICO UTILIZADO
+A) Backend (Servidor de Aplicación y API):
+   - Lenguaje: Python 3.11+
+   - Framework Web: Django 6.0+ & Django REST Framework (DRF)
+   - Autenticación: JWT (JSON Web Tokens) vía djangorestframework-simplejwt
+   - Procesamiento de PDF: ReportLab (Generación dinámica de Contra-Recibos), PyPDF2 / pdfplumber
+   - Hojas de Cálculo: OpenPyXL para exportación dinámica de Bitácoras de Tráfico en formato Excel (.xlsx)
+   - Tratamiento de Imágenes: Pillow (PIL)
+   - Gestor de Tareas / Servidor WSGI/ASGI: Gunicorn / Uvicorn
+
+B) Frontend (Interfaz de Usuario):
+   - Framework: React 18+ empacado con Vite
+   - Enrutamiento: React Router DOM v6
+   - Cliente HTTP: Axios con interceptores automáticos para inyección de Token JWT y manejo global de errores
+   - Estilos y UI: Vanilla CSS, componentes estructurados con Tailwind CSS, paletas dark/light mode
+   - Iconografía y Notificaciones: Lucide-React, Sileo Toaster
+
+C) Base de Datos y Almacenamiento:
+   - Motor de Base de Datos: PostgreSQL (Producción) / SQLite (Entorno de desarrollo local)
+   - Gestor de Medios: Cloudinary / Almacenamiento local persistente en disco para archivos PDF y facturas XML/PDF
+
+D) Agente Local de Escaneo (local_scanner_agent):
+   - Script de arranque: PowerShell (`iniciar_escaner.ps1`) y script ejecutable Batch (`iniciar_escaner.bat`)
+   - Agente Python: `add_scanner.py` para escucha de escáneres físicos conectados vía USB/WIA/TWAIN y transmisión de archivos vía HTTP POST a la API REST de SIGA.
+
+E) Infraestructura y Despliegue:
+   - Orquestación: Docker & Docker-Compose (`docker-compose.yml`)
+   - Enrutamiento / Proxy Inverso: Nginx
+   - DNS Dinámico: DuckDNS (`siga-discovery.duckdns.org`)
+   - Despliegue alternativo Frontend: Vercel (`vercel.json`)
+
+
+--------------------------------------------------------------------------------
+3. MATRIZ DE ROLES Y CONTROL DE ACCESO (RBAC)
+--------------------------------------------------------------------------------
+
+El sistema implementa control de acceso estricto basado en roles (Role-Based Access Control):
+
+3.1 ROLES DEFINIDOS EN EL SISTEMA:
+1. `admin_general` (Administrador General):
+   - Acceso total e ilimitado a todos los módulos.
+   - Único rol con permisos para gestionar usuarios, ver logs de auditoría global, eliminar registros críticos y aprobar solicitudes de cambio de facturas/viajes.
+
+2. `admin` (Administrador Operativo):
+   - Acceso a gestión de flota, logística, operadores, catálogos y mantenimiento.
+   - Permisos de edición y creación general.
+
+3. `capturista` (Capturista Financiero / Compras):
+   - Acceso enfocado en el módulo financiero: Facturación, Contra-Recibos, Tickets de gasto, Productos, Talleres y Proveedores.
+   - Permiso para solicitar cambios en facturas registradas.
+
+4. `jefe_logistica` (Jefe de Logística y Tráfico):
+   - Acceso a Control de Flota, Operadores, Monitoreo de Viajes, Registro de Salidas/Llegadas, Bitácoras y Cargas de Combustible.
+   - Restricción de creación/eliminación directa de datos financieros o usuarios.
+
+5. `monitoreo` (Monitorista de Tráfico):
+   - Acceso en tiempo real al tablero de control de viajes, registro de horas de salida y llegada a CEDIS.
+
+6. `lector_gastos` (Auditor de Gastos):
+   - Perfil estrictamente de LECTURA (Read-Only).
+   - Acceso a reportes de gastos por unidad, gastos por proveedor, combustible y visualización de facturas sin capacidad de alterar datos.
+
+
+--------------------------------------------------------------------------------
+4. ANÁLISIS DETALLADO DE REQUERIMIENTOS FUNCIONALES (RF)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+MÓDULO 1: AUTENTICACIÓN, USUARIOS Y AUDITORÍA
+--------------------------------------------------------------------------------
+RF1.1 Autenticación mediante Credenciales y Tokens JWT
+- El sistema debe permitir el inicio de sesión mediante nombre de usuario y contraseña.
+- Debe retornar un par de tokens JWT (Access Token y Refresh Token).
+- El token de acceso debe ser inyectado automáticamente en los encabezados HTTP `Authorization: Bearer <token>` por el frontend.
+
+RF1.2 Gestión de Usuarios y Asignación de Roles
+- El administrador general debe poder crear, editar, desactivar y listar usuarios.
+- Cada usuario debe tener asignado uno de los 6 roles oficiales (`admin_general`, `admin`, `capturista`, `jefe_logistica`, `monitoreo`, `lector_gastos`).
+
+RF1.3 Bitácora y Registro de Auditoría (Audit Log)
+- El sistema debe registrar automáticamente en la entidad `LogAuditoria` cada acción crítica realizada: creación, modificación o eliminación de vehículos, viajes, cargas de combustible, facturas y contra-recibos.
+- Debe capturar: Usuario, IP de origen, fecha/hora exacta, modelo afectado, ID del registro y snapshot de cambios.
+
+--------------------------------------------------------------------------------
+MÓDULO 2: CONTROL DE FLOTA Y VEHÍCULOS
+--------------------------------------------------------------------------------
+RF2.1 Catálogo de Unidades Tractocamion
+- Registro completo de unidades pesadas con los siguientes atributos: Número Económico (único), Placas (único), Marca, Modelo, Año, Número VIN (único), Fotografía de la Unidad, Tipo de Combustible (Diesel, Magna, Premium, Eléctrico, Gas LP), Capacidad de Carga en Toneladas (1.5, 3.5, 5.0, 8.0, 10.0, 30.0 Trailer/Full) y Estatus Operativo ('operativa', 'en_mantenimiento').
+- Edición y eliminación lógica/física de unidades según permisos de rol.
+
+RF2.2 Catálogo de Remolques y Cajas
+- Registro independiente de la flota de remolques (`RemolqueCaja`): Número Económico, Placas, Tipo de Caja (Seca, Refrigerada, Plataforma), Modelo y Número de Serie.
+
+RF2.3 Catálogo de Vehículos Variados y Maquinaria
+- Registro de vehículos secundarios y utilitarios (`VehiculoVariado`): Número Económico, Placas, Tipo, Modelo, Número de Serie, Horómetro / Kilometraje acumulado.
+
+RF2.4 Monitoreo de Odómetro y Kilometraje
+- Mantener actualizado el `ultimo_kilometraje`, `fecha_ultima_carga` y `ultimo_rendimiento` de cada unidad.
+- Permitir la bandera `ignorar_kilometraje` para evitar distorsiones en vehículos con odómetro averiado o maquinaria estacionaria.
+
+--------------------------------------------------------------------------------
+MÓDULO 3: GESTIÓN DE OPERADORES Y PERSONAL
+--------------------------------------------------------------------------------
+RF3.1 Control de Choferes / Operadores
+- Registro de operadores con datos personales: Nombre, Apellidos, Teléfono, Número de Licencia, Vigencia de Licencia y Estatus Operativo ('patio' / disponible, 'en_viaje', 'descanso', 'baja').
+
+RF3.2 Asignación Concurrente de Ayudantes
+- Permitir el registro y la asignación retroactiva de personal ayudante a viajes ya iniciados o concluidos.
+
+--------------------------------------------------------------------------------
+MÓDULO 4: LOGÍSTICA, MONITOREO DE VIAJES Y BITÁCORAS
+--------------------------------------------------------------------------------
+RF4.1 Registro de Salidas de Viaje
+- Formulario de salida asignando: Operador disponible, Unidad disponible, Destino/Tienda (Tiendas 10 a 390, Salidas Especiales, Reparto, Taller, etc.), Fecha y Hora de Salida, Ayudante opcional y Observaciones.
+
+RF4.2 Registro de Llegadas a CEDIS
+- Marcado de llegada de viaje registrando la fecha/hora exacta de cierre, liberando al operador a estatus 'patio' y completando el viaje.
+
+RF4.3 Rutas de Transporte de Personal
+- Soporte para salidas de transporte de personal con selección múltiple de horarios predefinidos ("07:00", "08:00", "08:30", "09:00", "17:30", "18:30", "19:00").
+
+RF4.4 Generación y Exportación de Bitácoras Operativas en Excel
+- Módulo de navegación retroactiva por semana operativa (definida de Viernes a Jueves).
+- Exportación automática de la bitácora semanal en formato Microsoft Excel (.xlsx) estructurado formalmente mediante OpenPyXL, incluyendo desglose por día, operador, unidad, tiendas visitadas y horarios.
+
+RF4.5 Solicitudes de Cambio de Viajes
+- Permitir la edición retroactiva de fechas de salida/llegada mediante solicitudes enviadas por personal operativo con auditoría.
+
+--------------------------------------------------------------------------------
+MÓDULO 5: CONTROL Y RENDIMIENTO DE COMBUSTIBLE
+--------------------------------------------------------------------------------
+RF5.1 Registro de Cargas por Bloque Diarios
+- Permitir la captura agrupada de cargas diarias por bloque (`BloqueCargaCombustible`), asociando fecha, estación de servicio, total de litros y monto cobrado.
+
+RF5.2 Registro de Precios Oficiales por Tipo de Fuel
+- Mantenimiento del catálogo diario/periódico de precios por litro para Diesel, Magna, Premium, Eléctrico y Gas LP.
+
+RF5.3 Algoritmo Automático de Recálculo Cronológico de Rendimiento (km/L)
+- Al insertar, editar o eliminar una carga de combustible (incluso con fecha pasada), el sistema debe recalcular automáticamente y en orden cronológico el rendimiento en km/L ($Rendimiento = \Delta Kilómetros / Litros$) para todas las cargas posteriores de esa unidad.
+- Actualización automática del `ultimo_rendimiento` y `ultimo_kilometraje` en el registro de la unidad.
+
+RF5.4 Detección de Inconsistencias y Banderas Especiales
+- Bandera `km_equivocado`: Corrige automáticamente lecturas erróneas de odómetro asignando el último kilometraje válido registrado.
+- Bandera `es_especial`: Permite identificar y aislar cargas fuera de ruta o consumos extraordinarios.
+
+RF5.5 Evidencias de Gas
+- Carga de expedientes digitales de vales y facturas de gas con folio, monto y archivo escaneado.
+
+--------------------------------------------------------------------------------
+MÓDULO 6: MANTENIMIENTO Y ÓRDENES DE TRABAJO
+--------------------------------------------------------------------------------
+RF6.1 Generación de Órdenes de Trabajo
+- Creación de órdenes preventivas o correctivas asociadas a unidades.
+- Cambio automático del estatus del vehículo a 'en_mantenimiento' (Fuera de servicio) impidiendo su asignación a nuevos viajes de logística.
+
+RF6.2 Registro de Talleres Internos y Externos
+- Asignación del taller responsable, descripción de fallas, piezas a reemplazar y fecha estimada de entrega.
+
+RF6.3 Reintegración de Unidades a Operación
+- Proceso de finalización de orden de trabajo requiriendo la vinculación obligatoria de las facturas o tickets de gastos asociados al servicio. Al completar la orden, la unidad regresa automáticamente a estatus 'operativa'.
+
+RF6.4 Proyecciones de Mantenimiento Preventivo
+- Cálculo estimado del próximo servicio de mantenimiento preventivo basado en el kilometraje recorrido desde el último servicio.
+
+--------------------------------------------------------------------------------
+MÓDULO 7: FACTURACIÓN, DESGLOSE Y SOLICITUDES DE CAMBIO
+--------------------------------------------------------------------------------
+RF7.1 Registro y Carga de Facturas XML/PDF
+- Formulario de captura de comprobantes fiscales con campos: Folio, Fecha, Proveedor, Taller, RFC Emisor, Razón Social, Categoría del Gasto, Monto Total, IVA Aplicado y Retención RESICO.
+
+RF7.2 Desglose Multi-Unidad y Prorrateo de Gastos
+- Soporte para asociar una factura a una unidad principal (Tractocamion, Caja o Variado) o prorratear el monto total entre múltiples unidades mediante la entidad `FacturaDetalleUnidad`.
+
+RF7.3 Cancelación de Facturas con Historial
+- Proceso de cancelación que registra motivo de cancelación, usuario autorizador, elimina los detalles financieros asignados a las unidades y permite vincular la factura de reemplazo.
+
+RF7.4 Solicitudes de Cambio de Factura
+- Cuando un capturista necesita modificar una factura guardada, el sistema genera una `SolicitudCambioFactura` en estado 'Pendiente'. El usuario `admin_general` o `admin` revisa el payload JSON de cambios y aprueba o rechaza la solicitud.
+
+--------------------------------------------------------------------------------
+MÓDULO 8: CONTRA-RECIBOS PARA PROVEEDORES
+--------------------------------------------------------------------------------
+RF8.1 Generación de Contra-Recibos
+- Selección de múltiples facturas de un mismo proveedor o taller para agruparlas bajo un único folio de Contra-Recibo (`CR-XXXXX`).
+
+RF8.2 Evaluación Individual de Facturas
+- Permitir marcar cada factura dentro del Contra-Recibo como 'Aceptada' o 'Rechazada', incluyendo motivo de rechazo y observaciones impresas para el proveedor.
+
+RF8.3 Generación e Impresión de Reportes PDF con ReportLab
+- Generación dinámica al vuelo de archivos PDF con formato corporativo (encabezado, tabla de facturas aceptadas/rechazadas, desglose de subtotal, IVA, retenciones y total a pagar) listos para impresión o descarga.
+
+--------------------------------------------------------------------------------
+MÓDULO 9: TICKETS DE GASTO RÁPIDOS Y AGENTE ESCÁNER LOCAL
+--------------------------------------------------------------------------------
+RF9.1 Captura Rápida de Tickets
+- Registro ágil de gastos menores de caja chica o compras en ruta con generación automática de folio interno (`TK-00001`).
+
+RF9.2 Conversión de Ticket a Factura
+- Marcado de ticket como "Facturado" al recibir el comprobante fiscal definitivo, vinculando automáticamente ambas entidades.
+
+RF9.3 Integración con Agente de Escáner Local (Hardware)
+- Recepción de imágenes/PDFs desde el agente `local_scanner_agent` que corre en la computadora física del usuario mediante un endpoint HTTP especializado. El archivo escaneado se adjunta directamente al Ticket o Factura sin necesidad de navegación en archivos locales.
+
+--------------------------------------------------------------------------------
+MÓDULO 10: CATÁLOGOS DE REFERENCIA
+--------------------------------------------------------------------------------
+RF10.1 Productos y Servicios
+- Administración de conceptos de gasto clasificados en: Mantenimiento, Combustible, Operativo, Administrativo, Refacciones, Llantas y Otro.
+
+RF10.2 Talleres Mecánicos
+- Catálogo de talleres con teléfono, dirección, contacto y tipo (Interno / Externo).
+
+RF10.3 Proveedores
+- Registro de proveedores comerciales con RFC, Razón Social, teléfono y condiciones de pago.
+
+--------------------------------------------------------------------------------
+MÓDULO 11: REPORTES E INTELIGENCIA FINANCIERA
+--------------------------------------------------------------------------------
+RF11.1 Dashboard Principal de Métricas (KPIs)
+- Tarjetas de resumen en tiempo real: Total de unidades activas, vehículos en taller, viajes del día, costo total de combustible del mes y total facturado.
+
+RF11.2 Reporte de Gastos por Unidad
+- Consolidación gráfica y tabular de todos los costos (Combustible, Mantenimiento, Refacciones) atribuidos a cada tractocamión o remolque en un rango de fechas.
+
+RF11.3 Reporte de Gastos por Proveedor y Efectivo
+- Análisis de montos acumulados por proveedor y compras realizadas en efectivo o caja chica.
+
+
+--------------------------------------------------------------------------------
+5. REQUERIMIENTOS NO FUNCIONALES (RNF)
+--------------------------------------------------------------------------------
+
+RNF-01: SEGURIDAD Y PROTECCIÓN DE DATOS
+- Cifrado de contraseñas mediante algoritmos hash robustos en Django (PBKDF2 / Argon2).
+- Autenticación Stateless JWT con expiración estricta y renovación mediante Refresh Tokens.
+- Protección contra vulnerabilidades web comunes: CORS restringido, prevención de SQL Injection mediante el ORM de Django, protección CSRF y sanitización de payloads JSON.
+- Control de acceso por API (Permissions Classes en Django REST Framework).
+
+RNF-02: RENDIMIENTO Y TIEMPOS DE RESPUESTA
+- Las peticiones a la API REST de consulta estándar deben responder en menos de 300 ms.
+- Soporte para parámetros `nopaged=true` optimizados con `select_related` y `prefetch_related` en el ORM de Django para evitar el problema de consultas $N+1$.
+- Carga perezosa (Lazy Loading) de componentes e imágenes en el frontend React.
+
+RNF-03: DISPONIBILIDAD Y CONCURRENCIA
+- El sistema debe estar preparado para operar 24/7 en entorno de red local o nube Dockerizada.
+- Manejo seguro de transacciones concurrentes en la base de datos al guardar cargas de combustible y modificar odómetros.
+
+RNF-04: USABILIDAD Y EXPERIENCIA DE USUARIO (UX/UI)
+- Interfaz moderna, limpia e intuitiva con soporte nativo para Modo Oscuro (Dark Mode) y Modo Claro (Light Mode).
+- Adaptabilidad Responsive Design para su visualización fluida en monitores de escritorio, computadoras portátiles y tabletas de tráfico.
+- Notificaciones Toaster en tiempo real para confirmar acciones exitosas o alertar sobre errores de validación.
+
+RNF-05: MANTENIBILIDAD Y MODULARIDAD DEL CÓDIGO
+- Arquitectura backend dividida en Django Apps independientes (`vehiculos`, `combustibles`, `logistica`, `mantenimiento`, `facturacion`, `proveedores`, `operadores`, `usuarios`).
+- Código frontend modularizado en `/components`, `/pages`, `/layouts`, `/context` y `/services`.
+- Documentación interna de API mediante vistas declarativas y serializadores estándar DRF.
+
+RNF-06: INTEROPERABILIDAD Y HARDWARE LOCAL
+- Capacidad de comunicación síncrona/asíncrona entre el servidor web y el agente local de escáner en PowerShell/Python.
+
+
+--------------------------------------------------------------------------------
+6. RESUMEN DEL MODELO DE DATOS Y ENTIDADES PRINCIPALES
+--------------------------------------------------------------------------------
+
+El modelo de datos relacional de SIGA está compuesto por las siguientes entidades clave:
+
+1. `usuarios.Usuario` / `auth.User`: Representa los usuarios y credenciales del sistema con asignación de roles.
+2. `vehiculos.UnidadTractocamion`: Flota principal de tractocamiones con control de kilometraje y estatus.
+3. `vehiculos.RemolqueCaja`: Cajas y remolques acoplables.
+4. `vehiculos.VehiculoVariado`: Maquinaria y vehículos auxiliares.
+5. `operadores.Operador`: Choferes y personal de conducción.
+6. `logistica.Viaje`: Registro de salidas, destinos, horarios, choferes y horas de llegada.
+7. `combustibles.PrecioCombustible`: Histórico de precios por litro.
+8. `combustibles.BloqueCargaCombustible`: Agrupación diaria de cargas de combustible.
+9. `combustibles.CargaCombustible`: Registro individual de carga con cálculo de rendimiento ($km/L$).
+10. `combustibles.EvidenciaGas`: Registro de comprobantes de consumo de gas.
+11. `mantenimiento.Taller`: Talleres mecánicos internos y proveedores de servicio.
+12. `mantenimiento.OrdenTrabajo`: Órdenes de reparación y mantenimiento vehicular.
+13. `facturacion.Producto`: Catálogo de conceptos de gasto y refacciones.
+14. `facturacion.Ticket`: Comprobantes rápidos de gasto.
+15. `facturacion.Factura`: Facturas fiscales registradas.
+16. `facturacion.FacturaDetalleUnidad`: Desglose de importes asignados por unidad.
+17. `facturacion.SolicitudCambioFactura`: Flujo de aprobación para edición de facturas.
+18. `facturacion.ContraRecibo`: Agrupación de facturas para pago a proveedores.
+19. `facturacion.ContraReciboFactura`: Estado de aceptación/rechazo de facturas en contra-recibo.
+20. `proveedores.Proveedor`: Directorio de proveedores de insumos y servicios.
+21. `core.LogAuditoria`: Bitácora histórica de transacciones y cambios.
+
+================================================================================
+FIN DEL DOCUMENTO DE ANÁLISIS DE REQUERIMIENTOS - SISTEMA SIGA
+================================================================================

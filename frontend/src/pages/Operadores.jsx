@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import api from '../services/api';
+import { AuthContext } from '../context/AuthContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { 
@@ -41,7 +42,10 @@ const Operadores = () => {
   const [vehiculos, setVehiculos] = useState([]);
   const [asignaciones, setAsignaciones] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState('operadores'); 
+  const { user } = useContext(AuthContext);
+  const isJefeLogistica = user?.rol === 'jefe_logistica';
+  
+  const [activeView, setActiveView] = useState(isJefeLogistica ? 'horarios' : 'operadores'); 
   const [isCreating, setIsCreating] = useState(false);
   const [expandedDate, setExpandedDate] = useState(null);
   const [historyFilterDate, setHistoryFilterDate] = useState('');
@@ -277,7 +281,9 @@ const Operadores = () => {
             <p className="text-slate-500 dark:text-slate-400 text-sm lg:text-lg">Gestión de operadores y planificación operativa.</p>
           </div>
           <div className="flex items-center gap-2 bg-white dark:bg-slate-900/50 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            <button onClick={() => setActiveView('operadores')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeView === 'operadores' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}><Users size={16} /> Operadores</button>
+            {!isJefeLogistica && (
+              <button onClick={() => setActiveView('operadores')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeView === 'operadores' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}><Users size={16} /> Operadores</button>
+            )}
             <button onClick={() => setActiveView('horarios')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeView === 'horarios' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}><Clock size={16} /> Horarios</button>
           </div>
         </div>

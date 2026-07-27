@@ -1,17 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Tag, Wrench, Users, LayoutGrid } from 'lucide-react';
 import Productos from './Productos';
 import Talleres from './Talleres';
 import Proveedores from './Proveedores';
+import { AuthContext } from '../context/AuthContext';
 
 const Catalogos = () => {
-  const [activeTab, setActiveTab] = useState('productos');
+  const { user } = useContext(AuthContext);
+  const isCapturista = user?.rol === 'capturista';
 
-  const tabs = [
+  const [activeTab, setActiveTab] = useState(isCapturista ? 'talleres' : 'productos');
+
+  let tabs = [
     { id: 'productos', label: 'Productos', icon: <Tag size={20} />, component: <Productos /> },
     { id: 'talleres', label: 'Talleres', icon: <Wrench size={20} />, component: <Talleres /> },
     { id: 'proveedores', label: 'Proveedores', icon: <Users size={20} />, component: <Proveedores /> },
   ];
+
+  if (isCapturista) {
+    tabs = tabs.filter(tab => tab.id !== 'productos');
+  }
 
   return (
     <div className="space-y-6">

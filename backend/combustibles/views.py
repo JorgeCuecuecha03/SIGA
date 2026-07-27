@@ -30,10 +30,10 @@ class BloqueCargaCombustibleViewSet(viewsets.ModelViewSet):
         if not fecha:
             return Response({"error": "fecha requerida"}, status=status.HTTP_400_BAD_REQUEST)
         
-        bloques = list(BloqueCargaCombustible.objects.filter(fecha=fecha).order_by('-fecha_registro'))
+        bloques = list(BloqueCargaCombustible.objects.filter(fecha=fecha, es_especial=False).order_by('-fecha_registro'))
         data = BloqueCargaCombustibleSerializer(bloques, many=True).data
 
-        cargas_sin_bloque = CargaCombustible.objects.filter(fecha=fecha, bloque__isnull=True).order_by('-fecha_registro')
+        cargas_sin_bloque = CargaCombustible.objects.filter(fecha=fecha, bloque__isnull=True, es_especial=False).order_by('-fecha_registro')
         if cargas_sin_bloque.exists():
             cargas_data = CargaCombustibleSerializer(cargas_sin_bloque, many=True).data
             total_litros = sum(float(c.litros) for c in cargas_sin_bloque)
@@ -211,9 +211,13 @@ class CargaCombustibleViewSet(viewsets.ModelViewSet):
         if not isinstance(cargas_data, list) or not cargas_data:
             return Response({"error": "Debe enviar una lista de cargas"}, status=status.HTTP_400_BAD_REQUEST)
         
-        import datetime
+        fecha_bloque = cargas_data[0].get('fecha')
+        if not fecha_bloque:
+            import datetime
+            fecha_bloque = datetime.date.today()
+            
         bloque = BloqueCargaCombustible.objects.create(
-            fecha=datetime.date.today(),
+            fecha=fecha_bloque,
             es_especial=True
         )
 

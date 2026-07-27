@@ -743,6 +743,7 @@ const ListaVehiculos = () => {
 
                       <div className="pt-4 border-t border-slate-100 dark:border-slate-800/50 flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
+                          {/* Botón de estado (Operativo / Fuera de Servicio) oculto por ahora
                           <button 
                             type="button"
                             onClick={() => handleStatusClick(v)}
@@ -757,6 +758,7 @@ const ListaVehiculos = () => {
                             }`}></span>
                             {(!v.estado || v.estado === 'operativa') ? 'Operativo' : 'Fuera de Servicio'}
                           </button>
+                          */}
                           <button 
                             type="button"
                             onClick={() => openFacturasModal(v)}

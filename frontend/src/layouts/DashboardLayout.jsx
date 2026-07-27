@@ -67,8 +67,8 @@ const DashboardLayout = () => {
       roles: ['admin_general', 'admin', 'capturista', 'jefe_logistica', 'lector_gastos'],
       subItems: [
         { label: 'General', path: '/reporte-gastos', roles: ['admin_general', 'admin', 'capturista', 'jefe_logistica', 'lector_gastos'] },
-        { label: 'Prov/Talleres', path: '/reporte-proveedores', roles: ['admin_general', 'admin', 'capturista', 'jefe_logistica', 'lector_gastos'] },
-        { label: 'Pago Efectivo', path: '/reporte-efectivo', roles: ['admin_general', 'admin', 'capturista', 'jefe_logistica', 'lector_gastos'] }
+        { label: 'Prov/Talleres', path: '/reporte-proveedores', roles: ['admin_general', 'admin', 'capturista', 'lector_gastos'] },
+        { label: 'Pago Efectivo', path: '/reporte-efectivo', roles: ['admin_general', 'admin', 'capturista', 'lector_gastos'] }
       ]
     },
   ];

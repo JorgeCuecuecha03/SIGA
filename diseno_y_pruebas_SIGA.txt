@@ -1,0 +1,565 @@
+================================================================================
+          SISTEMA INTEGRAL DE GESTIÓN DE AUTOTRANSPORTE (SIGA)
+      DOCUMENTO DE DISEÑO DE SOFTWARE, DIAGRAMAS UML, PROCESOS DE NEGOCIO,
+            MODELO ER (3FN), DESARROLLO Y PLAN DE PRUEBAS DEL SISTEMA
+================================================================================
+
+FECHA DE GENERACIÓN: 24 de Julio de 2026
+PROYECTO: SIGA / Autrotransportes
+VERSIÓN: 2.0.0
+ESTADO: Documentación Técnica de Ingeniería de Software
+
+--------------------------------------------------------------------------------
+1. CASOS DE USO CON RELATORÍAS DETALLADAS
+--------------------------------------------------------------------------------
+
+A continuación se especifican las relatorías completas de los Casos de Uso (CU) más críticos del sistema SIGA.
+
+--------------------------------------------------------------------------------
+CU-01: INICIO DE SESIÓN Y AUTENTICACIÓN JWT
+--------------------------------------------------------------------------------
+- Actor Principal: Usuario del Sistema (Cualquier rol: Admin, Capturista, Logística, Monitoreo, Lector).
+- Precondiciones: El usuario debe tener una cuenta activa registrada en la base de datos con un rol asignado.
+- Flujo Principal:
+  1. El usuario accede a la pantalla de login (`/login`).
+  2. Ingrese su `username` y `password`.
+  3. El cliente React envía una petición `POST /api/token/` con las credenciales.
+  4. El backend valida el hash de la contraseña (PBKDF2/Django Auth).
+  5. Si es válido, genera y retorna un par de tokens JWT (`access` y `refresh`) junto con la información del perfil del usuario (nombre, rol).
+  6. El frontend almacena el `access` token en `localStorage` e inicializa el `AuthContext`.
+  7. Redirecciona al usuario al Dashboard principal según los permisos de su rol.
+- Flujos Alternativos / Excepciones:
+  - 3a. Credenciales inválidas: El backend retorna HTTP 401 Unauthorized. El frontend despliega una alerta con el mensaje "Usuario o contraseña incorrectos".
+  - 4a. Usuario desactivado (`is_active=False`): El backend retorna HTTP 401. El frontend notifica "Cuenta desactivada por el administrador".
+- Postcondiciones: El usuario queda autenticado en la sesión con su token inyectado en cada cabecera HTTP subsecuente.
+
+--------------------------------------------------------------------------------
+CU-02: REGISTRO DE SALIDA DE UNIDAD Y MONITOREO DE VIAJE
+--------------------------------------------------------------------------------
+- Actor Principal: Jefe de Logística / Monitorista de Tráfico.
+- Precondiciones: El operador debe tener estatus 'patio' y la unidad tractocamión debe estar en estatus 'operativa'.
+- Flujo Principal:
+  1. El usuario hace clic en "Iniciar Nuevo Viaje" en el módulo de Logística.
+  2. Selecciona un operador de la lista desplegable de personal disponible ('patio').
+  3. Selecciona una unidad tractocamión disponible ('operativa').
+  4. Define el destino (Tiendas 10 a 390, Salidas Especiales, Reparto de Quesos o Taller).
+  5. (Opcional) Asigna un ayudante de la lista de operadores y observaciones.
+  6. Envía el formulario; el frontend ejecuta `POST /api/viajes/`.
+  7. El backend crea la entidad `Viaje`, cambia el estatus del operador a 'en_viaje' y registra el log de auditoría.
+  8. El viaje aparece inmediatamente en la sección "Control de Tráfico / En Ruta".
+- Flujos Alternativos:
+  - 3a. La unidad seleccionada está en mantenimiento: El backend rechaza la transacción con HTTP 400 alertando "Unidad fuera de servicio".
+  - 4a. Ruta de Transporte de Personal: El usuario activa el selector "Es Transporte" y marca múltiples horarios ("07:00", "17:30"). Se consolida la información en el destino del viaje.
+- Postcondiciones: La unidad y chofer quedan asociados al viaje activo hasta el reporte de llegada a CEDIS.
+
+--------------------------------------------------------------------------------
+CU-03: CARGA DE COMBUSTIBLE Y RECÁLCULO AUTOMÁTICO DE RENDIMIENTO (KM/L)
+--------------------------------------------------------------------------------
+- Actor Principal: Capturista / Jefe de Logística.
+- Precondiciones: La unidad debe estar registrada en el sistema.
+- Flujo Principal:
+  1. El usuario abre el formulario de registro de carga dentro del bloque del día.
+  2. Selecciona la unidad, tipo de combustible (Diesel, Magna, etc.), fecha, litros cargados, precio por litro y lectura del odómetro (kilometraje).
+  3. Envía los datos; el frontend llama a `POST /api/cargas-combustible/`.
+  4. El método `save()` del modelo `CargaCombustible` calcula `monto_total = litros * precio_unitario`.
+  5. El backend dispara el algoritmo de recálculo cronológico: obtiene todas las cargas históricas de la unidad ordenadas por fecha.
+  6. Recorre las cargas iterativamente calculando $\Delta Km / Litros$ entre cargas consecutivas sin la bandera `ignorar_kilometraje`.
+  7. Actualiza en base de datos los rendimientos históricos de la unidad y el `ultimo_rendimiento` y `ultimo_kilometraje` en `UnidadTractocamion`.
+  8. Dispara las señales de actualización de totales en `BloqueCargaCombustible`.
+- Flujos Alternativos:
+  - 2a. Odómetro equivocado (`km_equivocado=True`): El sistema sobreescribe el kilometraje de la carga con el último kilometraje válido conocido del vehículo para evitar distorsiones negativas o infinitas.
+- Postcondiciones: Las métricas de rendimiento y kilometraje de la unidad quedan actualizadas cronológicamente de forma exacta.
+
+--------------------------------------------------------------------------------
+CU-04: APERTURA DE ÓRDEN DE TRABAJO Y CAMBIO A MANTENIMIENTO
+--------------------------------------------------------------------------------
+- Actor Principal: Capturista / Administrador.
+- Precondiciones: La unidad debe pertenecer al catálogo de vehículos.
+- Flujo Principal:
+  1. El usuario hace clic sobre el estado de la unidad en la lista de vehículos.
+  2. Selecciona el taller responsable (interno o proveedor externo), tipo de mantenimiento (preventivo/correctivo) y descripción del reporte de falla.
+  3. Envía el formulario invocando `POST /api/ordenes-trabajo/`.
+  4. El backend crea la `OrdenTrabajo` con estatus 'abierta' y actualiza automáticamente el campo `estado` de la unidad a 'en_mantenimiento'.
+  5. La unidad cambia su indicador visual a color rojo ("Fuera de Servicio").
+- Flujos Alternativos / Cierre de Orden:
+  - Cierre: Al reparar la unidad, el usuario ejecuta "Reintegrar a Operación", selecciona las facturas o tickets de los repuestos consumidos, invocando `POST /api/ordenes-trabajo/{id}/completar/`. El backend cierra la orden y devuelve el vehículo a estatus 'operativa'.
+
+--------------------------------------------------------------------------------
+CU-05: CAPTURA DE FACTURA CON DESGLOSE MULTI-UNIDAD Y RESICO
+--------------------------------------------------------------------------------
+- Actor Principal: Capturista.
+- Precondiciones: El proveedor y producto/servicio deben existir en el sistema.
+- Flujo Principal:
+  1. El capturista accede al módulo de Facturación e ingresa: Folio, Fecha, Proveedor, Monto Total, Retenciones (RESICO / IVA) y adjunta el PDF/XML escaneado.
+  2. En la sección de asignación de costo, indica si el gasto pertenece a una sola unidad o a múltiples unidades.
+  3. Si es múltiple, ingresa los montos específicos prorrateados para cada tractocamión, caja o vehículo variado.
+  4. Envía el formulario; la API procesa `POST /api/facturas/`.
+  5. El backend crea la `Factura`, auto-genera el `Ticket` vinculado de auditoría y crea los registros hijos `FacturaDetalleUnidad`.
+- Postcondiciones: El gasto queda contabilizado en el reporte financiero global y asignado individualmente al historial de cada unidad.
+
+--------------------------------------------------------------------------------
+CU-06: GENERACIÓN DE CONTRA-RECIBO Y EXPORTACIÓN DE PDF
+--------------------------------------------------------------------------------
+- Actor Principal: Capturista / Administrador.
+- Precondiciones: Deben existir facturas registradas asociadas al proveedor seleccionado.
+- Flujo Principal:
+  1. El usuario va al módulo "Contra-Recibos" y hace clic en "Nuevo Contra-Recibo".
+  2. Selecciona el proveedor/taller. El sistema muestra todas las facturas pendientes de cobro de dicho emisor.
+  3. El usuario marca las facturas a incluir y define el estado de cada una ('Aceptada' o 'Rechazada' con su respectiva observación).
+  4. Guarda el registro (`POST /api/contra-recibos/`).
+  5. El backend calcula subtotales, retenciones e impuestos, generando el folio único `CR-XXXXX`.
+  6. El usuario hace clic en "Imprimir PDF".
+  7. El backend ejecuta la vista `pdf_contra_recibo` usando ReportLab, renderiza el documento en memoria con logotipo, firma y tablas corporativas, y lo envía al navegador como archivo PDF listo para descarga.
+
+--------------------------------------------------------------------------------
+CU-07: CAPTURA DE TICKET CON AGENTE ESCÁNER LOCAL
+--------------------------------------------------------------------------------
+- Actor Principal: Capturista.
+- Precondiciones: El agente `local_scanner_agent` debe estar en ejecución en el equipo físico conectado al escáner hardware.
+- Flujo Principal:
+  1. El usuario coloca el ticket físico en la bandeja del escáner y presiona el botón de captura en el panel local.
+  2. El agente `add_scanner.py` digitaliza la imagen/PDF y realiza una petición `POST` multipart/form-data directamente al endpoint del servidor SIGA.
+  3. SIGA recibe el archivo escaneado y lo guarda en `/media/tickets/YYYY/MM/`.
+  4. El sistema crea automáticamente un registro `Ticket` con el folio interno autogenerado `TK-XXXXX` y adjunta el archivo.
+  5. En la interfaz web del capturista, aparece una notificación en tiempo real indicando "Nuevo ticket escaneado recibido".
+
+--------------------------------------------------------------------------------
+CU-08: SOLICITUD DE CAMBIO DE FACTURA Y APROBACIÓN POR ADMINISTRADOR
+--------------------------------------------------------------------------------
+- Actor Principal: Capturista (Solicitante) y Admin General (Autorizador).
+- Precondiciones: La factura a modificar ya fue guardada previamente.
+- Flujo Principal:
+  1. El capturista edita una factura existente y describe el motivo de la corrección.
+  2. El sistema crea una `SolicitudCambioFactura` en estado 'Pendiente' con la estructura JSON de los cambios propuestos (`cambios_propuestos`).
+  3. El Administrador General recibe la notificación en el módulo "Solicitudes de Cambio".
+  4. El Administrador inspecciona el diff entre los datos originales y los propuestos.
+  5. Al hacer clic en "Aprobar", el backend aplica los cambios JSON sobre la `Factura` original, recalcula los desgloses en `FacturaDetalleUnidad` y cambia la solicitud a 'Aprobada'.
+  6. Se registra el cambio en el `LogAuditoria`.
+
+
+--------------------------------------------------------------------------------
+2. DIAGRAMA DE CLASES (ESPECIFICACIÓN Y ESTRUCTURA UML)
+--------------------------------------------------------------------------------
+
+El siguiente diagrama en sintaxis UML/PlantUML describe la estructura de clases del backend y sus relaciones:
+
+```
++-----------------------------------------------------------------------------------+
+|                                 UnidadTractocamion                                |
++-----------------------------------------------------------------------------------+
+| - id: Integer [PK]                                                                |
+| - placas: String (20) [Unique]                                                    |
+| - numero_economico: String (50) [Unique]                                          |
+| - marca: String (100)                                                             |
+| - modelo: String (100)                                                            |
+| - anio: Integer                                                                   |
+| - numero_vin: String (100) [Unique]                                               |
+| - tipo_combustible: Enum (diesel, magna, premium, electrico, gas_lp)              |
+| - capacidad: Decimal (4,1)                                                        |
+| - estado: Enum (operativa, en_mantenimiento)                                      |
+| - ultimo_kilometraje: Integer                                                     |
+| - fecha_ultima_carga: Date                                                        |
+| - ultimo_rendimiento: Decimal (10,2)                                              |
+| - ignorar_kilometraje: Boolean                                                    |
++-----------------------------------------------------------------------------------+
+                                   | 1
+                                   |
+                                   | 0..*
++-----------------------------------------------------------------------------------+
+|                                  CargaCombustible                                 |
++-----------------------------------------------------------------------------------+
+| - id: Integer [PK]                                                                |
+| - bloque_id: FK -> BloqueCargaCombustible                                         |
+| - unidad_id: FK -> UnidadTractocamion [Nullable]                                  |
+| - unidad_variada_id: FK -> VehiculoVariado [Nullable]                             |
+| - fecha: Date                                                                     |
+| - tipo_combustible: String                                                        |
+| - precio_unitario: Decimal (10,2)                                                 |
+| - litros: Decimal (10,3)                                                          |
+| - monto_total: Decimal (12,2)                                                     |
+| - kilometraje: Integer                                                            |
+| - rendimiento: Decimal (10,2)                                                     |
+| - ignorar_kilometraje: Boolean                                                    |
+| - km_equivocado: Boolean                                                          |
+| - es_especial: Boolean                                                            |
++-----------------------------------------------------------------------------------+
+| + save(*args, **kwargs) -> Recalcula rendimientos cronológicos                     |
++-----------------------------------------------------------------------------------+
+
++-----------------------------------+             +---------------------------------+
+|           RemolqueCaja            |             |         VehiculoVariado         |
++-----------------------------------+             +---------------------------------+
+| - id: Integer [PK]                |             | - id: Integer [PK]              |
+| - placas: String [Unique]         |             | - placas: String                |
+| - numero_economico: String        |             | - numero_economico: String      |
+| - tipo: String                    |             | - tipo: String                  |
+| - modelo: Integer                 |             | - ultimo_kilometraje: Integer   |
+| - numero_serie: String            |             | - ultimo_rendimiento: Decimal   |
++-----------------------------------+             +---------------------------------+
+
++-----------------------------------------------------------------------------------+
+|                                       Viaje                                       |
++-----------------------------------------------------------------------------------+
+| - id: Integer [PK]                                                                |
+| - operador: FK -> Operador                                                        |
+| - vehiculo: FK -> UnidadTractocamion                                              |
+| - ayudante: FK -> Operador [Nullable]                                             |
+| - tienda: String [Nullable]                                                       |
+| - destino: String [Nullable]                                                      |
+| - fecha_salida: DateTime                                                          |
+| - fecha_llegada: DateTime [Nullable]                                              |
+| - completado: Boolean                                                             |
++-----------------------------------------------------------------------------------+
+
++-----------------------------------------------------------------------------------+
+|                                      Factura                                      |
++-----------------------------------------------------------------------------------+
+| - id: Integer [PK]                                                                |
+| - folio: String [Unique]                                                          |
+| - fecha: Date                                                                     |
+| - monto: Decimal (12,2)                                                           |
+| - proveedor: FK -> Proveedor                                                      |
+| - taller: FK -> Taller                                                            |
+| - producto: FK -> Producto                                                        |
+| - ticket: OneToOne -> Ticket                                                      |
+| - cancelado: Boolean                                                              |
+| - motivo_cancelacion: Text                                                        |
+| - iva_aplicado: Boolean                                                           |
+| - resico_aplicado: Boolean                                                        |
++-----------------------------------------------------------------------------------+
+| + cancel(motivo, reemplazo, usuario)                                              |
++-----------------------------------------------------------------------------------+
+          | 1
+          |
+          | 0..*
++-----------------------------------------------------------------------------------+
+|                                FacturaDetalleUnidad                               |
++-----------------------------------------------------------------------------------+
+| - id: Integer [PK]                                                                |
+| - factura: FK -> Factura                                                          |
+| - unidad: FK -> UnidadTractocamion [Nullable]                                     |
+| - caja: FK -> RemolqueCaja [Nullable]                                             |
+| - variado: FK -> VehiculoVariado [Nullable]                                       |
+| - monto: Decimal (12,2)                                                           |
++-----------------------------------------------------------------------------------+
+```
+
+
+--------------------------------------------------------------------------------
+3. DIAGRAMAS DE SECUENCIA
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+DS-01: CARGA DE COMBUSTIBLE Y RECÁLCULO AUTOMÁTICO DE RENDIMIENTO
+--------------------------------------------------------------------------------
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Capturista
+    participant UI as React Frontend (Combustibles.jsx)
+    participant API as Django REST API (views.py)
+    participant Model as CargaCombustible (models.py)
+    participant DB as Base de Datos (PostgreSQL)
+
+    Capturista->>UI: Ingresa datos de carga (Litros, Precio, Km, Fecha)
+    UI->>API: POST /api/cargas-combustible/ [JWT Token + JSON Payload]
+    API->>Model: CargaCombustible.objects.create(data)
+    Model->>Model: save() -> Calcula monto_total = litros * precio_unitario
+    Model->>DB: INSERT INTO combustibles_cargacombustible
+    Model->>Model: Ejecuta Recálculo Cronológico (obtiene cargas ordenadas por fecha)
+    loop Por cada carga histórica de la unidad
+        Model->>Model: Calcula Rendimiento = (Km_actual - Km_previo) / Litros
+        Model->>DB: UPDATE combustibles_cargacombustible SET rendimiento
+    end
+    Model->>DB: UPDATE vehiculos_unidadtractocamion SET ultimo_rendimiento, ultimo_kilometraje
+    API-->>UI: HTTP 201 Created [Objeto Carga + Rendimiento Calculado]
+    UI-->>Capturista: Notificación Toast: "Carga registrada y rendimiento recalculado"
+```
+
+--------------------------------------------------------------------------------
+DS-02: CAPTURA E INTEGRACIÓN DESDE AGENTE DE ESCÁNER LOCAL
+--------------------------------------------------------------------------------
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor OperadorEscaner as Capturista Físico
+    participant Scanner as Escáner Hardware (USB/Red)
+    participant Agent as Agent Python (add_scanner.py)
+    participant Backend as Backend SIGA API
+    participant UI as React Dashboard
+
+    OperadorEscaner->>Scanner: Coloca documento y presiona Escanear
+    Scanner->>Agent: Captura imagen/PDF digitalizado
+    Agent->>Agent: Procesa archivo y prepara multipart HTTP payload
+    Agent->>Backend: POST /api/tickets/escaneo_remoto/ (File Binary)
+    Backend->>Backend: Genera Folio Interno TK-XXXXX y guarda en media/
+    Backend->>Backend: Crear registro Ticket(convertido_en_factura=False)
+    Backend-->>Agent: HTTP 200 OK {"status": "success", "ticket_id": 105}
+    Backend-->>UI: WebSocket / Push Notification: "Nuevo Ticket Disponible"
+    UI-->>OperadorEscaner: Muestra Ticket en pantalla listo para categorizar
+```
+
+
+--------------------------------------------------------------------------------
+4. DIAGRAMA DE COMPONENTES
+--------------------------------------------------------------------------------
+
+El sistema está compuesto por los siguientes módulos y componentes arquitectónicos:
+
+```
++-----------------------------------------------------------------------------------+
+|                                 CAPA DE PRESENTACIÓN                              |
+|  +-----------------------------------------------------------------------------+  |
+|  |                             React SPA (Vite Engine)                         |  |
+|  |  [Dashboard] [Logistica] [Vehiculos] [Combustible] [Facturacion] [Reportes]   |  |
+|  +-----------------------------------------------------------------------------+  |
++------------------------------------------|----------------------------------------+
+                                           | HTTPS / JSON API (Axios Interceptors)
+                                           v
++-----------------------------------------------------------------------------------+
+|                                CAPA DE API & SERVICIOS                            |
+|  +-----------------------------------------------------------------------------+  |
+|  |                     Django REST Framework (DRF API Router)                  |  |
+|  |  - SimpleJWT Auth Middleware      - Permission RBAC Classes                 |  |
+|  |  - ViewSets / Serializers         - Audit Log Interceptor                   |  |
+|  +-----------------------------------------------------------------------------+  |
++------------------------------------------|----------------------------------------+
+                                           | ORM Engine
+                                           v
++-----------------------------------------------------------------------------------+
+|                                  CAPA DE NEGOCIO                                  |
+|  [Modelo Flota]  [Algoritmo Combustible]  [Gestor Mantenimiento]  [Motor ReportLab]|
++------------------------------------------|----------------------------------------+
+                  |                        |                         |
+                  v                        v                         v
++-----------------------------------+ +-----------------------+ +--------------------+
+|       PERIFÉRICO DE ENTRADA       | |   PERSISTENCIA DATOS  | | STORAGE DOCUMENTOS |
+|  local_scanner_agent              | |   PostgreSQL / SQLite | | Cloudinary / Media|
+|  (PowerShell / Python Agent)      | |   Engine              | | Local File System|
++-----------------------------------+ +-----------------------+ +--------------------+
+```
+
+
+--------------------------------------------------------------------------------
+5. DIAGRAMAS DE PROCESO DE NEGOCIO (BPMN TEXTUAL Y FLUJOS)
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+PN-01: CICLO COMPLETO DE LOGÍSTICA Y MONITOREO DE RUTA
+--------------------------------------------------------------------------------
+1. [Inicio]: El Jefe de Logística verifica disponibilidad de flota y choferes en el tablero.
+2. [Evaluación de Estatus]: ¿Operador en 'patio' y Unidad 'operativa'?
+   - No: El sistema bloquea la asignación. Fin del proceso.
+   - Sí: Continúa al paso 3.
+3. [Asignación de Viaje]: Se selecciona Chofer, Unidad, Destino/Tienda y Hora de Salida.
+4. [Salida de Unidad]: Se registra el viaje. Estatus del operador pasa a 'en_viaje'.
+5. [Tránsito]: La unidad realiza la entrega en ruta o transporte de personal.
+6. [Reporte de Llegada]: Al regresar a CEDIS, se captura la hora de llegada.
+7. [Cierre]: El viaje pasa a 'completado' y el chofer se reincorpora a estatus 'patio'. [Fin].
+
+--------------------------------------------------------------------------------
+PN-02: PROCESO DE GESTIÓN DE PROVEEDORES Y CONTRA-RECIBOS DE PAGO
+--------------------------------------------------------------------------------
+1. [Recepción]: El proveedor entrega sus facturas físicas/digitales de repuestos o servicios.
+2. [Captura]: El capturista registra las facturas en SIGA asociándolas al proveedor y unidades.
+3. [Generación de CR]: El usuario crea un nuevo Contra-Recibo seleccionando las facturas del proveedor.
+4. [Auditoría de Documentos]: Se evalúa cada factura:
+   - Factura válida -> Marcada como 'Aceptada'.
+   - Factura con error o sin soporte -> Marcada como 'Rechazada' indicando la causa.
+5. [Cierre Financiero]: El sistema calcula el total neto a pagar deduciendo retenciones de ley (RESICO/IVA).
+6. [Emisión PDF]: Se genera el PDF oficial de Contra-Recibo y se entrega al proveedor para fecha de pago. [Fin].
+
+
+--------------------------------------------------------------------------------
+6. DIAGRAMA DE ACTIVIDADES
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+DA-01: FLUJO DE CONTROL DE CARGA DE COMBUSTIBLE CON RECÁLCULO
+--------------------------------------------------------------------------------
+
+```
+  ( Inicio )
+      |
+      v
+[Seleccionar Unidad y Capturar Carga (Litros, Precio, Km)]
+      |
+      v
+< ¿Bandera km_equivocado activada? >
+     /                            \
+   (Sí)                           (No)
+   /                                \
+[Asignar último Km conocido]     [Mantener Km ingresado]
+   \                                /
+    \                              /
+      v                           v
+[Calcular Monto Total = Litros * Precio Unitario]
+      |
+      v
+[Guardar Registro CargaCombustible en BD]
+      |
+      v
+[Obtener Cargas Históricas de la Unidad Ordenadas por Fecha]
+      |
+      v
+[Iterar y Recalcular Rendimientos: ΔKm / Litros]
+      |
+      v
+[Actualizar Rendimiento y Kilometraje en UnidadTractocamion]
+      |
+      v
+[Actualizar Totales en BloqueCargaCombustible vía Signals]
+      |
+      v
+   ( Fin )
+```
+
+
+--------------------------------------------------------------------------------
+7. MODELO ENTIDAD-RELACIÓN (MER) Y NORMALIZACIÓN A 3FN
+--------------------------------------------------------------------------------
+
+7.1 ESTRUCTURA DEL MODELO ENTIDAD RELACIÓN (MER)
+El modelo relacional está compuesto por 21 tablas organizadas por dominio. A continuación se detallan las llaves primarias (PK), foráneas (FK) y restricciones:
+
+- `vehiculos_unidadtractocamion` (PK: id, Placas [UQ], Numero_Economico [UQ], VIN [UQ])
+- `vehiculos_remolquecaja` (PK: id, Placas [UQ], Numero_Economico [UQ])
+- `vehiculos_vehiculovariado` (PK: id, Numero_Economico [UQ])
+- `operadores_operador` (PK: id, Licencia [UQ])
+- `logistica_viaje` (PK: id, FK: operador_id, FK: vehiculo_id, FK: ayudante_id)
+- `combustibles_cargacombustible` (PK: id, FK: bloque_id, FK: unidad_id, FK: unidad_variada_id)
+- `combustibles_bloquecargacombustible` (PK: id)
+- `combustibles_preciocombustible` (PK: id, Fecha [UQ])
+- `mantenimiento_taller` (PK: id)
+- `mantenimiento_ordentrabajo` (PK: id, FK: unidad_id, FK: taller_id)
+- `proveedores_proveedor` (PK: id, RFC [UQ])
+- `facturacion_producto` (PK: id, Nombre [UQ])
+- `facturacion_ticket` (PK: id, Folio_Interno [UQ], FK: proveedor_id, FK: taller_id, FK: producto_id)
+- `facturacion_factura` (PK: id, Folio [UQ], FK: proveedor_id, FK: taller_id, FK: producto_id, FK: ticket_id [1:1])
+- `facturacion_facturadetalleunidad` (PK: id, FK: factura_id, FK: unidad_id, FK: caja_id, FK: variado_id)
+- `facturacion_solicitudcambiofactura` (PK: id, FK: factura_id, FK: solicitante_id, FK: autorizador_id)
+- `facturacion_contrarecibo` (PK: id, Folio [UQ], FK: proveedor_id, FK: taller_id, FK: capturista_id)
+- `facturacion_contrarecibofactura` (PK: id, FK: contra_recibo_id)
+- `core_logauditoria` (PK: id, FK: usuario_id)
+
+7.2 DEMOSTRACIÓN DE NORMALIZACIÓN (1FN, 2FN, 3FN)
+
+A) Primera Forma Normal (1FN):
+   - Condición: Todos los atributos son atómicos y no existen grupos repetitivos.
+   - Cumplimiento en SIGA: Se eliminaron las listas de unidades o facturas almacenadas como cadenas separadas por comas dentro de una sola celda. Por ejemplo, en lugar de guardar múltiples unidades en un campo de texto dentro de una factura, se creó la entidad explícita `FacturaDetalleUnidad`, donde cada celda almacena un valor escalar único (un `monto` para una `unidad_id` específica).
+
+B) Segunda Forma Normal (2FN):
+   - Condición: Está en 1FN y todos los atributos no clave dependen funcionalmente de la totalidad de la clave primaria (sin dependencias parciales).
+   - Cumplimiento en SIGA: En la tabla `facturacion_facturadetalleunidad` y `facturacion_contrarecibofactura`, las claves compuestas implícitas se descomponen de modo que el `monto` prorrateado o el `estado` de aceptación depende estrictamente de la combinación de la factura concreta y la unidad/contra-recibo asociada, eliminando redundancias en la tabla de facturas principales.
+
+C) Tercera Forma Normal (3FN):
+   - Condición: Está en 2FN y no existen dependencias transitivas (ningún atributo no clave depende de otro atributo no clave).
+   - Cumplimiento en SIGA:
+     - Los precios de los combustibles no se guardan repetidamente en cada registro de `CargaCombustible`; se extrajeron a la entidad independiente `PrecioCombustible` identificada por `fecha`.
+     - La información de los proveedores (RFC, Razón Social, Teléfono) y talleres no se duplica en las facturas ni en las órdenes de trabajo. En su lugar, `Factura` almacena únicamente las claves foráneas `proveedor_id` y `taller_id`, garantizando que cualquier cambio en la dirección o RFC del proveedor se actualice en un único lugar sin inconsistencias.
+
+
+--------------------------------------------------------------------------------
+8. DESARROLLO (CODIFICACIÓN Y DEPURACIÓN DE MÓDULOS)
+--------------------------------------------------------------------------------
+
+8.1 PATRONES DE DISEÑO Y ESTRUCTURA DE CÓDIGO APLICADOS
+
+1. Patrón MVC / MVT (Model-View-Template / Serializer):
+   - Los modelos de Django (`models.py`) encapsulan la lógica de dominio y reglas de negocio (ej. el método `save()` en `CargaCombustible` y `cancel()` en `Factura`).
+   - Los serializadores (`serializers.py`) validan y transforman los datos de entrada/salida a formato JSON.
+   - Las vistas (`views.py`) gestionan el control de flujo y la respuesta HTTP.
+
+2. Patrón Middleware y Signals:
+   - Uso de Django Signals (`post_save`, `post_delete`) para la sincronización automática de totales en `BloqueCargaCombustible` al modificar cargas individuales.
+   - Middleware de Axios en React para interceptar las respuestas 401 JWT y renovar el token transparente al usuario.
+
+3. Programación Defensiva y Transacciones Atómicas:
+   - Uso de `transaction.atomic()` en Django para garantizar que la creación de una factura y sus desgloses de unidades se ejecuten como una sola unidad indivisible: si falla el desglose, se revierte toda la factura.
+
+8.2 HERRAMIENTAS Y ESTRATEGIA DE DEPURACIÓN (DEBUGGING)
+
+El desarrollo del sistema incluye un conjunto de scripts especializados de auditoría y depuración directa localizados en el backend:
+- `recalcular_todo.py`: Script CLI para forzar la recalibración cronológica masiva de rendimientos de combustible de toda la flota.
+- `debug_api.py` / `debug_serializer.py`: Diagnóstico de respuestas JSON y tiempos de serialización.
+- `inspect_db.py` / `check_db.py`: Verificación de integridad relacional en la base de datos PostgreSQL/SQLite.
+- Logging: Configuración de depuración `logging` en Django para auditar sentencias SQL lentas y excepciones no controladas.
+
+
+--------------------------------------------------------------------------------
+9. PLAN Y PRUEBAS DE SOFTWARE (DOCUMENTACIÓN ESPECÍFICA)
+--------------------------------------------------------------------------------
+
+9.1 ESTRATEGIA DE PRUEBAS DEL SISTEMA
+
+Se definió una matriz de pruebas que cubre 4 niveles de verificación:
+1. Pruebas Unitarias (Unit Testing): Verificación de funciones puras, cálculo de fórmulas de rendimiento y validadores de campos.
+2. Pruebas de Integración (Integration Testing): Verificación de comunicación entre endpoints REST, base de datos y emisión de tokens JWT.
+3. Pruebas de Interoperabilidad (System & Hardware Testing): Integración del agente `local_scanner_agent` enviando imágenes escaneadas al servidor.
+4. Pruebas de Aceptación de Usuario (UAT): Validación de flujos completos en la interfaz de usuario React.
+
+9.2 MATRIZ DE CASOS DE PRUEBA EJECUTADOS (TEST CASES)
+
+--------------------------------------------------------------------------------
+CASO DE PRUEBA CP-01: AUTENTICACIÓN JWT CON CREDENCIALES VÁLIDAS E INVÁLIDAS
+--------------------------------------------------------------------------------
+- Objetivo: Verificar que el endpoint `/api/token/` responda correctamente ante credenciales correctas e incorrectas.
+- Tipo: Prueba de Integración.
+- Datos de Entrada:
+  - Intento A: `{ "username": "admin", "password": "PasswordCorrecta123" }`
+  - Intento B: `{ "username": "admin", "password": "PasswordIncorrecta" }`
+- Pasos:
+  1. Enviar petición HTTP POST a `/api/token/` con Intento A.
+  2. Verificar código HTTP y payload de respuesta.
+  3. Enviar petición HTTP POST a `/api/token/` con Intento B.
+- Resultado Esperado:
+  - Intento A: HTTP 200 OK con tokens `access` y `refresh` válidos.
+  - Intento B: HTTP 401 Unauthorized con mensaje de error.
+- Resultado Obtenido: EXITOSO (Pasó sin errores).
+
+--------------------------------------------------------------------------------
+CASO DE PRUEBA CP-02: RECÁLCULO CRONOLÓGICO DE RENDIMIENTO AL INSERTAR CARGA PASADA
+--------------------------------------------------------------------------------
+- Objetivo: Validar que al insertar una carga de combustible con fecha anterior, los rendimientos de las cargas posteriores se recalculen cronológicamente.
+- Tipo: Prueba Unitaria / Negocio (Modelo CargaCombustible).
+- Precondiciones: La unidad T-01 tiene cargas registradas el 10-Jul (1000 Km, 100L) y 20-Jul (1500 Km, 100L, Rendimiento original = 5.0 km/L).
+- Pasos:
+  1. Registrar una nueva carga intermedia con fecha 15-Jul (1250 Km, 50L).
+  2. Consultar el estado de la carga del 20-Jul.
+- Resultado Esperado:
+  - Carga 15-Jul: Rendimiento = (1250 - 1000) / 50 = 5.0 km/L.
+  - Carga 20-Jul: Recalculado = (1500 - 1250) / 100 = 2.5 km/L.
+  - Rendimiento del vehículo actualizado en BD a 2.5 km/L.
+- Resultado Obtenido: EXITOSO (El algoritmo recalculó correctamente la cadena).
+
+--------------------------------------------------------------------------------
+CASO DE PRUEBA CP-03: RESTRICCIÓN DE ASIGNACIÓN DE VEHÍCULO EN MANTENIMIENTO
+--------------------------------------------------------------------------------
+- Objetivo: Verificar que el módulo de Logística no permita asignar una unidad en mantenimiento a un nuevo viaje.
+- Tipo: Prueba Funcional / Regla de Negocio.
+- Pasos:
+  1. Generar una Orden de Trabajo para la unidad T-05 (Estatus pasa a 'en_mantenimiento').
+  2. Abrir el modal "Nuevo Viaje" en el módulo de Logística.
+  3. Intentar seleccionar la unidad T-05.
+- Resultado Esperado:
+  - La unidad T-05 no aparece en la lista de disponibles, o el backend rechaza la petición HTTP con error 400 Bad Request.
+- Resultado Obtenido: EXITOSO (Validación activa correctamente).
+
+--------------------------------------------------------------------------------
+CASO DE PRUEBA CP-04: GENERACIÓN DE CONTRA-RECIBO EN FORMATO PDF
+--------------------------------------------------------------------------------
+- Objetivo: Probar el renderizado dinámico del PDF de Contra-Recibo usando ReportLab.
+- Tipo: Prueba de Sistema y Formato.
+- Pasos:
+  1. Crear un Contra-Recibo para el proveedor "Refacciones del Norte" con 3 facturas.
+  2. Hacer clic en "Ver PDF" (`GET /api/contra-recibos/{id}/pdf/`).
+- Resultado Esperado:
+  - Respuesta HTTP 200 OK con `Content-Type: application/pdf`.
+  - El PDF se despliega en el navegador con encabezados corporativos, folio, desglose de facturas y firmas.
+- Resultado Obtenido: EXITOSO (PDF generado limpiamente en memoria sin guardar archivos temporales obsoletos).
+
+================================================================================
+FIN DEL DOCUMENTO DE DISEÑO, MODELADO Y PRUEBAS - SISTEMA SIGA
+================================================================================
