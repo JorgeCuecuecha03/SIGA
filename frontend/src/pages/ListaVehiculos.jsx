@@ -1681,6 +1681,17 @@ const ListaVehiculos = () => {
                               <span className="text-slate-500 font-bold">KM ACTUAL</span>
                               <span className="text-slate-300 font-mono">{carga.kilometraje != null ? String(carga.kilometraje) : '---'} km</span>
                             </div>
+                            {carga.alcance > 0 ? (
+                              <div className="flex justify-between items-center text-[11px] mt-1.5">
+                                <span className="text-slate-500 font-bold">ALCANCE</span>
+                                <span className="text-blue-400 font-bold font-mono">{carga.alcance.toLocaleString()} km</span>
+                              </div>
+                            ) : fuelHistory[index + 1]?.kilometraje != null && carga.kilometraje != null && carga.kilometraje > fuelHistory[index + 1].kilometraje ? (
+                              <div className="flex justify-between items-center text-[11px] mt-1.5">
+                                <span className="text-slate-500 font-bold">ALCANCE</span>
+                                <span className="text-blue-400 font-bold font-mono">{(carga.kilometraje - fuelHistory[index + 1].kilometraje).toLocaleString()} km</span>
+                              </div>
+                            ) : null}
                             {carga.rendimiento > 0 && (
                               <div className="flex justify-between items-center text-[11px] mt-1.5">
                                 <span className="text-slate-500 font-bold">RENDIMIENTO</span>

@@ -940,7 +940,7 @@ const Combustibles = () => {
       placas: unidad.placas,
       tipo_combustible: unidad.tipo_combustible || 'diesel',
       litros: '',
-      kilometraje: unidad.ultimo_kilometraje || '',
+      kilometraje: '',
       ultimo_kilometraje: unidad.ultimo_kilometraje || 0,
       ignorar_kilometraje: unidad.ignorar_kilometraje || false,
       km_equivocado: false
@@ -1789,7 +1789,7 @@ const Combustibles = () => {
                                 unidad: val,
                                 is_variado: u.is_variado,
                                 ultimo_kilometraje: u.ultimo_kilometraje || 0,
-                                kilometraje: u.ultimo_kilometraje || '',
+                                kilometraje: '',
                                 km_equivocado: false
                               });
                               setBusquedaEspecial(u.numero_economico);
