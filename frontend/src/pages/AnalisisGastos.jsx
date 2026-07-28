@@ -313,7 +313,7 @@ const AnalisisGastos = ({ facturas, vehiculos, cajas = [], variados = [], cargas
               </option>
               
               {vehiculosFiltrados.length > 0 && (
-                <optgroup label="Tractores / Unidades" className="bg-slate-100 dark:bg-slate-955 text-blue-600 dark:text-blue-400 font-bold">
+                <optgroup label="Unidades" className="bg-slate-100 dark:bg-slate-955 text-blue-600 dark:text-blue-400 font-bold">
                   {vehiculosFiltrados.map(v => (
                     <option key={`tractor_${v.id}`} value={v.id} className="text-slate-900 dark:text-white font-normal bg-white dark:bg-slate-950">
                       {v.numero_economico} {v.placas ? `- ${v.placas}` : ''}

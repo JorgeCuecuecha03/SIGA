@@ -43,6 +43,54 @@ const Spinner = () => (
   </svg>
 );
 
+const SumDesgloseHoverTooltip = ({ desglose, children }) => {
+  const [show, setShow] = useState(false);
+
+  if (!desglose || !Array.isArray(desglose) || desglose.length <= 1) {
+    return children;
+  }
+
+  const total = desglose.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
+
+  return (
+    <div 
+      className="relative inline-flex items-center"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      {children}
+      {show && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-slate-900 text-white border border-slate-700/80 rounded-2xl p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 pointer-events-none">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 pb-1 border-b border-slate-800 flex items-center justify-between">
+            <span className="flex items-center gap-1 text-amber-400 font-bold">
+              <Calculator size={12} /> Desglose de Suma
+            </span>
+            <span className="bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[9px] font-bold">
+              {desglose.length} tickets
+            </span>
+          </div>
+
+          <div className="space-y-1 max-h-36 overflow-y-auto custom-scrollbar pr-1">
+            {desglose.map((val, idx) => (
+              <div key={idx} className="flex justify-between items-center text-xs font-mono py-0.5 px-1 rounded hover:bg-slate-800/50">
+                <span className="text-[10px] text-slate-400 font-sans font-medium">Ticket {idx + 1}:</span>
+                <span className="text-slate-200 font-bold">{parseFloat(val).toFixed(3)} L</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-2 pt-1.5 border-t border-slate-800 flex justify-between items-center text-xs font-bold text-emerald-400 font-mono">
+            <span className="text-[10px] text-slate-400 uppercase font-sans">Total Sumado:</span>
+            <span>{total.toFixed(3)} L</span>
+          </div>
+
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+        </div>
+      )}
+    </div>
+  );
+};
+
 const FuelSelect = ({ value, onChange, rowIndex, maxRows, handleGridKeyDown }) => {
   const [isOpen, setIsOpen] = useState(false);
   const options = [
@@ -850,7 +898,10 @@ const Combustibles = () => {
         is_variado: true, 
         marca: v.tipo || 'Vehículo Variado' 
       }));
-      setUnidades([...mappedUnidades, ...mappedVariados]);
+      const sortedUnidades = [...mappedUnidades, ...mappedVariados].sort((a, b) => 
+        (a.numero_economico || '').localeCompare(b.numero_economico || '', undefined, { numeric: true, sensitivity: 'base' })
+      );
+      setUnidades(sortedUnidades);
     } catch (err) {
       console.error("Error fetching units", err);
     }
@@ -882,7 +933,7 @@ const Combustibles = () => {
   const handleAddUnidad = (unidad) => {
     if (cargas.find(c => c.unidad === unidad.id && c.is_variado === unidad.is_variado)) return;
     
-    setCargas([...cargas, {
+    const newCargas = [...cargas, {
       unidad: unidad.id,
       is_variado: unidad.is_variado,
       numero_economico: unidad.numero_economico,
@@ -893,7 +944,9 @@ const Combustibles = () => {
       ultimo_kilometraje: unidad.ultimo_kilometraje || 0,
       ignorar_kilometraje: unidad.ignorar_kilometraje || false,
       km_equivocado: false
-    }]);
+    }];
+    newCargas.sort((a, b) => (a.numero_economico || '').localeCompare(b.numero_economico || '', undefined, { numeric: true, sensitivity: 'base' }));
+    setCargas(newCargas);
     setBusqueda('');
   };
 
@@ -1057,7 +1110,11 @@ const Combustibles = () => {
        finalList.push(...group);
     });
     
-    finalList.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    finalList.sort((a, b) => {
+      const numComp = (a.numero_economico || '').localeCompare(b.numero_economico || '', undefined, { numeric: true, sensitivity: 'base' });
+      if (numComp !== 0) return numComp;
+      return new Date(a.fecha) - new Date(b.fecha);
+    });
     return finalList;
   };
 
@@ -1466,83 +1523,96 @@ const Combustibles = () => {
                           />
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-2 relative">
-                            <div className="relative">
-                              <input 
-                                type="number"
-                                step="0.001"
-                                data-row={idx}
-                                data-col="litros"
-                                value={carga.litros}
-                                onChange={(e) => updateCarga(idx, 'litros', e.target.value)}
-                                onKeyDown={(e) => handleGridKeyDown(e, idx, 'litros', cargas.length)}
-                                onWheel={(e) => e.currentTarget.blur()}
-                                className="w-24 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl pl-3 pr-6 py-2 text-slate-900 dark:text-white text-sm outline-none focus:ring-1 focus:ring-blue-500"
-                                placeholder="0.000"
-                              />
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold">L</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCalculadoraIndex(calculadoraIndex === idx ? null : idx);
-                                setCalculadoraValores(['', '']);
-                              }}
-                              className={`p-2 rounded-xl transition-all ${calculadoraIndex === idx ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400'}`}
-                              title="Calculadora de Litros"
-                            >
-                              <Calculator size={16} />
-                            </button>
-                            
-                            {calculadoraIndex === idx && (
-                              <div className="absolute left-full top-0 ml-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-4 z-50 w-56 animate-in fade-in zoom-in duration-200">
-                                <div className="flex justify-between items-center mb-4">
-                                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 tracking-wide uppercase flex items-center gap-2">
-                                    <Calculator size={14} className="text-blue-500"/> Sumar Tickets
-                                  </span>
-                                  <button onClick={() => setCalculadoraIndex(null)} className="text-slate-400 hover:text-red-500 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded-md transition-colors"><X size={14}/></button>
-                                </div>
-                                <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar mb-3 pr-1">
-                                  {calculadoraValores.map((val, i) => (
-                                    <div key={i} className="relative">
-                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">T{i+1}</span>
-                                      <input 
-                                        type="number"
-                                        step="0.001"
-                                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all dark:text-white"
-                                        placeholder="0.000"
-                                        value={val}
-                                        onWheel={(e) => e.currentTarget.blur()}
-                                        onChange={(e) => {
-                                          const newVals = [...calculadoraValores];
-                                          newVals[i] = e.target.value;
-                                          setCalculadoraValores(newVals);
-                                        }}
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                                <button 
-                                  className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs py-2 rounded-xl transition-colors flex items-center justify-center gap-1 mb-3 font-medium"
-                                  onClick={() => setCalculadoraValores([...calculadoraValores, ''])}
-                                >
-                                  <Plus size={14}/> Agregar Ticket
-                                </button>
-                                
-                                <button
-                                  className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-2.5 rounded-xl transition-all shadow-lg shadow-blue-500/30 flex justify-between items-center px-4 hover:scale-[1.02] active:scale-[0.98]"
-                                  onClick={() => {
-                                    const total = calculadoraValores.reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0);
-                                    updateCarga(idx, 'litros', total.toString());
-                                    setCalculadoraIndex(null);
+                          <SumDesgloseHoverTooltip desglose={carga.desglose_suma}>
+                            <div className="flex items-center gap-2 relative">
+                              <div className="relative">
+                                <input 
+                                  type="number"
+                                  step="0.001"
+                                  data-row={idx}
+                                  data-col="litros"
+                                  value={carga.litros}
+                                  onChange={(e) => {
+                                    updateCarga(idx, 'litros', e.target.value);
+                                    if (carga.desglose_suma) {
+                                      const newCargas = [...cargas];
+                                      newCargas[idx].desglose_suma = null;
+                                      setCargas(newCargas);
+                                    }
                                   }}
-                                >
-                                  <span>Aplicar</span>
-                                  <span>{calculadoraValores.reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0).toFixed(3)} L</span>
-                                </button>
+                                  onKeyDown={(e) => handleGridKeyDown(e, idx, 'litros', cargas.length)}
+                                  onWheel={(e) => e.currentTarget.blur()}
+                                  className={`w-24 bg-white dark:bg-slate-950 border ${carga.desglose_suma?.length > 1 ? 'border-amber-500/80 dark:border-amber-500/80 ring-1 ring-amber-500/30' : 'border-slate-200 dark:border-slate-700'} rounded-xl pl-3 pr-6 py-2 text-slate-900 dark:text-white text-sm outline-none focus:ring-1 focus:ring-blue-500`}
+                                  placeholder="0.000"
+                                />
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold">L</span>
                               </div>
-                            )}
-                          </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCalculadoraIndex(calculadoraIndex === idx ? null : idx);
+                                  setCalculadoraValores(['', '']);
+                                }}
+                                className={`p-2 rounded-xl transition-all ${carga.desglose_suma?.length > 1 ? 'bg-amber-500 text-white shadow-md' : calculadoraIndex === idx ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400'}`}
+                                title={carga.desglose_suma?.length > 1 ? `Carga sumada (${carga.desglose_suma.length} tickets). Pasa el cursor para ver el desglose.` : "Calculadora de Litros"}
+                              >
+                                <Calculator size={16} />
+                              </button>
+                              
+                              {calculadoraIndex === idx && (
+                                <div className="absolute left-full top-0 ml-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-4 z-50 w-56 animate-in fade-in zoom-in duration-200">
+                                  <div className="flex justify-between items-center mb-4">
+                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 tracking-wide uppercase flex items-center gap-2">
+                                      <Calculator size={14} className="text-blue-500"/> Sumar Tickets
+                                    </span>
+                                    <button onClick={() => setCalculadoraIndex(null)} className="text-slate-400 hover:text-red-500 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded-md transition-colors"><X size={14}/></button>
+                                  </div>
+                                  <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar mb-3 pr-1">
+                                    {calculadoraValores.map((val, i) => (
+                                      <div key={i} className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">T{i+1}</span>
+                                        <input 
+                                          type="number"
+                                          step="0.001"
+                                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all dark:text-white"
+                                          placeholder="0.000"
+                                          value={val}
+                                          onWheel={(e) => e.currentTarget.blur()}
+                                          onChange={(e) => {
+                                            const newVals = [...calculadoraValores];
+                                            newVals[i] = e.target.value;
+                                            setCalculadoraValores(newVals);
+                                          }}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <button 
+                                    className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs py-2 rounded-xl transition-colors flex items-center justify-center gap-1 mb-3 font-medium"
+                                    onClick={() => setCalculadoraValores([...calculadoraValores, ''])}
+                                  >
+                                    <Plus size={14}/> Agregar Ticket
+                                  </button>
+                                  
+                                  <button
+                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-2.5 rounded-xl transition-all shadow-lg shadow-blue-500/30 flex justify-between items-center px-4 hover:scale-[1.02] active:scale-[0.98]"
+                                    onClick={() => {
+                                      const validVals = calculadoraValores.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+                                      const total = validVals.reduce((acc, curr) => acc + curr, 0);
+                                      const newCargas = [...cargas];
+                                      newCargas[idx].litros = total.toString();
+                                      newCargas[idx].desglose_suma = validVals.length > 1 ? validVals : null;
+                                      setCargas(newCargas);
+                                      setCalculadoraIndex(null);
+                                    }}
+                                  >
+                                    <span>Aplicar</span>
+                                    <span>{calculadoraValores.reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0).toFixed(3)} L</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </SumDesgloseHoverTooltip>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1">
@@ -1781,82 +1851,89 @@ const Combustibles = () => {
 
               <div className="space-y-2">
                 <label className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-widest">Litros Cargados</label>
-                <div className="flex items-center gap-2 relative">
-                  <div className="relative flex-1">
-                    <input 
-                      type="number" 
-                      required
-                      step="0.001"
-                      value={cargaEspecial.litros}
-                      onChange={(e) => setCargaEspecial({...cargaEspecial, litros: e.target.value})}
-                      onWheel={(e) => e.currentTarget.blur()}
-                      className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl pr-8 pl-4 py-3 text-slate-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-amber-500 transition-all"
-                      placeholder="0.000"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">L</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCalculadoraIndex(calculadoraIndex === 'especial' ? null : 'especial');
-                      setCalculadoraValores(['', '']);
-                    }}
-                    className={`p-3 rounded-xl transition-all ${calculadoraIndex === 'especial' ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400'}`}
-                    title="Calculadora de Litros"
-                  >
-                    <Calculator size={18} />
-                  </button>
-                  {calculadoraIndex === 'especial' && (
-                    <div className="absolute right-0 sm:left-full top-full sm:top-0 mt-2 sm:mt-0 sm:ml-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-4 z-50 w-56 animate-in fade-in zoom-in duration-200">
-                      <div className="flex justify-between items-center mb-4">
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 tracking-wide uppercase flex items-center gap-2">
-                          <Calculator size={14} className="text-amber-500"/> Sumar Tickets
-                        </span>
-                        <button type="button" onClick={() => setCalculadoraIndex(null)} className="text-slate-400 hover:text-red-500 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded-md transition-colors"><X size={14}/></button>
-                      </div>
-                      <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar mb-3 pr-1">
-                        {calculadoraValores.map((val, i) => (
-                          <div key={i} className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">T{i+1}</span>
-                            <input 
-                              type="number"
-                              step="0.001"
-                              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all dark:text-white"
-                              placeholder="0.000"
-                              value={val}
-                              onWheel={(e) => e.currentTarget.blur()}
-                              onChange={(e) => {
-                                const newVals = [...calculadoraValores];
-                                newVals[i] = e.target.value;
-                                setCalculadoraValores(newVals);
-                              }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                      <button 
-                        type="button"
-                        className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs py-2 rounded-xl transition-colors flex items-center justify-center gap-1 mb-3 font-medium"
-                        onClick={() => setCalculadoraValores([...calculadoraValores, ''])}
-                      >
-                        <Plus size={14}/> Agregar Ticket
-                      </button>
-                      
-                      <button
-                        type="button"
-                        className="w-full bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/30 flex justify-between items-center px-4 hover:scale-[1.02] active:scale-[0.98]"
-                        onClick={() => {
-                          const total = calculadoraValores.reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0);
-                          setCargaEspecial({...cargaEspecial, litros: total.toString()});
-                          setCalculadoraIndex(null);
-                        }}
-                      >
-                        <span>Aplicar</span>
-                        <span>{calculadoraValores.reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0).toFixed(3)} L</span>
-                      </button>
+                <SumDesgloseHoverTooltip desglose={cargaEspecial.desglose_suma}>
+                  <div className="flex items-center gap-2 relative">
+                    <div className="relative flex-1">
+                      <input 
+                        type="number" 
+                        required
+                        step="0.001"
+                        value={cargaEspecial.litros}
+                        onChange={(e) => setCargaEspecial({...cargaEspecial, litros: e.target.value, desglose_suma: null})}
+                        onWheel={(e) => e.currentTarget.blur()}
+                        className={`w-full bg-white dark:bg-slate-950 border ${cargaEspecial.desglose_suma?.length > 1 ? 'border-amber-500/80 dark:border-amber-500/80 ring-1 ring-amber-500/30' : 'border-slate-200 dark:border-slate-700'} rounded-xl pr-8 pl-4 py-3 text-slate-900 dark:text-white text-sm outline-none focus:ring-2 focus:ring-amber-500 transition-all`}
+                        placeholder="0.000"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">L</span>
                     </div>
-                  )}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCalculadoraIndex(calculadoraIndex === 'especial' ? null : 'especial');
+                        setCalculadoraValores(['', '']);
+                      }}
+                      className={`p-3 rounded-xl transition-all ${cargaEspecial.desglose_suma?.length > 1 ? 'bg-amber-500 text-white shadow-md' : calculadoraIndex === 'especial' ? 'bg-amber-500 text-white shadow-md' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400'}`}
+                      title={cargaEspecial.desglose_suma?.length > 1 ? `Carga sumada (${cargaEspecial.desglose_suma.length} tickets). Pasa el cursor para ver el desglose.` : "Calculadora de Litros"}
+                    >
+                      <Calculator size={18} />
+                    </button>
+                    {calculadoraIndex === 'especial' && (
+                      <div className="absolute right-0 sm:left-full top-full sm:top-0 mt-2 sm:mt-0 sm:ml-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-4 z-50 w-56 animate-in fade-in zoom-in duration-200">
+                        <div className="flex justify-between items-center mb-4">
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 tracking-wide uppercase flex items-center gap-2">
+                            <Calculator size={14} className="text-amber-500"/> Sumar Tickets
+                          </span>
+                          <button type="button" onClick={() => setCalculadoraIndex(null)} className="text-slate-400 hover:text-red-500 bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded-md transition-colors"><X size={14}/></button>
+                        </div>
+                        <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar mb-3 pr-1">
+                          {calculadoraValores.map((val, i) => (
+                            <div key={i} className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">T{i+1}</span>
+                              <input 
+                                type="number"
+                                step="0.001"
+                                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-sm outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all dark:text-white"
+                                placeholder="0.000"
+                                value={val}
+                                onWheel={(e) => e.currentTarget.blur()}
+                                onChange={(e) => {
+                                  const newVals = [...calculadoraValores];
+                                  newVals[i] = e.target.value;
+                                  setCalculadoraValores(newVals);
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <button 
+                          type="button"
+                          className="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs py-2 rounded-xl transition-colors flex items-center justify-center gap-1 mb-3 font-medium"
+                          onClick={() => setCalculadoraValores([...calculadoraValores, ''])}
+                        >
+                          <Plus size={14}/> Agregar Ticket
+                        </button>
+                        
+                        <button
+                          type="button"
+                          className="w-full bg-amber-500 hover:bg-amber-400 text-white text-sm font-bold py-2.5 rounded-xl transition-all shadow-lg shadow-amber-500/30 flex justify-between items-center px-4 hover:scale-[1.02] active:scale-[0.98]"
+                          onClick={() => {
+                            const validVals = calculadoraValores.map(v => parseFloat(v)).filter(v => !isNaN(v) && v > 0);
+                            const total = validVals.reduce((acc, curr) => acc + curr, 0);
+                            setCargaEspecial({
+                              ...cargaEspecial,
+                              litros: total.toString(),
+                              desglose_suma: validVals.length > 1 ? validVals : null
+                            });
+                            setCalculadoraIndex(null);
+                          }}
+                        >
+                          <span>Aplicar</span>
+                          <span>{calculadoraValores.reduce((acc, curr) => acc + (parseFloat(curr) || 0), 0).toFixed(3)} L</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </SumDesgloseHoverTooltip>
               </div>
 
               <div className="space-y-2">
@@ -1950,10 +2027,19 @@ const Combustibles = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex flex-col">
-                            <span className="text-sm text-slate-300 font-medium uppercase">{carga.tipo_combustible}</span>
-                            <span className="text-xs text-slate-500">{carga.litros}L a ${carga.precio_unitario}/L</span>
-                          </div>
+                          <SumDesgloseHoverTooltip desglose={carga.desglose_suma}>
+                            <div className="flex flex-col cursor-help">
+                              <span className="text-sm text-slate-300 font-medium uppercase">{carga.tipo_combustible}</span>
+                              <span className="text-xs text-slate-500 flex items-center gap-1.5">
+                                {carga.litros}L a ${carga.precio_unitario}/L
+                                {carga.desglose_suma?.length > 1 && (
+                                  <span className="text-[9px] font-black text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 flex items-center gap-1">
+                                    <Calculator size={10} /> {carga.desglose_suma.length} tickets
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          </SumDesgloseHoverTooltip>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1 text-xs">

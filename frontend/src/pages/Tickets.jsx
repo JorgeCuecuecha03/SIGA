@@ -269,7 +269,7 @@ const Tickets = () => {
                       <p className={`text-sm font-bold truncate ${t.unidades_info?.length > 1 ? 'text-purple-600 dark:text-purple-400' : 'text-slate-900 dark:text-white'}`}>
                         {t.unidades_info?.length > 1 
                           ? `${t.unidades_info.length} Unidades: ${t.unidades_info.join(', ')}` 
-                          : (unidad ? `Tractor: ${unidad.numero_economico}` : 'Gasto General')}
+                          : (unidad ? `Unidad: ${unidad.numero_economico}` : 'Gasto General')}
                       </p>
                       {t.caja_numero_economico && (
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1 font-semibold">

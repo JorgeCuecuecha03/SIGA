@@ -1009,7 +1009,7 @@ const AltaFactura = ({ onSuccess, onClose, factura, existingFacturas = [] }) => 
                       
                       {vehiculosFiltrados.length > 0 && (
                         <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
-                          Tractores
+                          Unidades
                         </div>
                       )}
                       {vehiculosFiltrados.map(v => (
@@ -1103,7 +1103,7 @@ const AltaFactura = ({ onSuccess, onClose, factura, existingFacturas = [] }) => 
                       const v = vehiculos.find(veh => veh.id === uId);
                       return v ? (
                         <div key={`vehiculo-${uId}`} className="flex items-center gap-1.5 bg-blue-600/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 px-3 py-1 rounded-full text-[10px] font-black">
-                          <span>Tractor: {v.numero_economico}</span>
+                          <span>Unidad: {v.numero_economico}</span>
                           <button 
                             type="button" 
                             onClick={() => setFormData(prev => {
@@ -1361,7 +1361,7 @@ const AltaFactura = ({ onSuccess, onClose, factura, existingFacturas = [] }) => 
                     if (detalle.unidad) {
                       const v = vehiculos.find(veh => veh.id === detalle.unidad);
                       key = `unidad-${detalle.unidad}`;
-                      name = v ? `Tractor: ${v.numero_economico}` : `Tractor #${detalle.unidad}`;
+                      name = v ? `Unidad: ${v.numero_economico}` : `Unidad #${detalle.unidad}`;
                     } else if (detalle.caja) {
                       const c = cajas.find(caj => caj.id === detalle.caja);
                       key = `caja-${detalle.caja}`;

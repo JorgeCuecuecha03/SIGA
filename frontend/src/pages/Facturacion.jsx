@@ -555,7 +555,7 @@ const Facturacion = () => {
                       <p className={`text-sm font-bold truncate ${f.unidades_info?.length > 1 ? 'text-purple-600 dark:text-purple-400' : 'text-slate-900 dark:text-white'}`}>
                         {f.unidades_info?.length > 1 
                           ? `${f.unidades_info.length} Unidades: ${f.unidades_info.join(', ')}` 
-                          : (unidad ? `Tractor: ${unidad.numero_economico}` : 'Sin tractor asignado')}
+                          : (unidad ? `Unidad: ${unidad.numero_economico}` : 'Sin unidad asignada')}
                       </p>
                       {f.caja_numero_economico && (
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1 font-semibold">

@@ -408,7 +408,7 @@ const AltaTicket = ({ onSuccess, onClose }) => {
                   </option>
                   
                   {vehiculosFiltrados.length > 0 && (
-                    <optgroup label="Tractores" className="bg-white dark:bg-slate-900 text-slate-400 font-bold text-xs">
+                    <optgroup label="Unidades" className="bg-white dark:bg-slate-900 text-slate-400 font-bold text-xs">
                       {vehiculosFiltrados.map(v => (
                         <option key={`vehiculo_${v.id}`} value={`vehiculo_${v.id}`} className="bg-white dark:bg-slate-900 text-slate-950 dark:text-white font-normal">{v.numero_economico}</option>
                       ))}
@@ -438,7 +438,7 @@ const AltaTicket = ({ onSuccess, onClose }) => {
                       const v = vehiculos.find(veh => veh.id === uId);
                       return v ? (
                         <div key={`vehiculo-${uId}`} className="flex items-center gap-2 bg-amber-600/20 text-amber-500 border border-amber-500/30 px-3 py-1 rounded-full text-[10px] font-bold animate-in fade-in zoom-in-95 duration-200">
-                          <span>Tractor: {v.numero_economico}</span>
+                          <span>Unidad: {v.numero_economico}</span>
                           <button 
                             type="button" 
                             onClick={() => setFormData(prev => {
