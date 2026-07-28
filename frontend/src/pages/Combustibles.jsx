@@ -1102,9 +1102,15 @@ const Combustibles = () => {
     let finalList = [];
     Object.values(groups).forEach(group => {
        group.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-       for(let i = 1; i < group.length; i++) {
-           if(group[i-1].kilometraje && !group[i-1].ignorar_kilometraje) {
+       for(let i = 0; i < group.length; i++) {
+           if(i > 0 && group[i-1].kilometraje && !group[i-1].ignorar_kilometraje) {
                group[i].ultimo_kilometraje = group[i-1].kilometraje;
+           }
+           if (group[i].kilometraje && !group[i].ignorar_kilometraje && group[i].ultimo_kilometraje) {
+               const diff = parseInt(group[i].kilometraje) - parseInt(group[i].ultimo_kilometraje);
+               group[i].alcance = diff > 0 ? diff : 0;
+           } else {
+               group[i].alcance = null;
            }
        }
        finalList.push(...group);
@@ -1939,8 +1945,13 @@ const Combustibles = () => {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] lg:text-xs font-bold text-slate-400 uppercase tracking-widest">Kilometraje (Opcional)</label>
-                  <span className="text-[11px] text-slate-500 font-medium">
-                    Km anterior: <strong className="text-slate-700 dark:text-slate-300">{(cargaEspecial.ultimo_kilometraje || 0).toLocaleString()} KM</strong>
+                  <span className="text-[11px] text-slate-500 font-medium flex items-center gap-1.5">
+                    <span>Km anterior: <strong className="text-slate-700 dark:text-slate-300">{(cargaEspecial.ultimo_kilometraje || 0).toLocaleString()} KM</strong></span>
+                    {cargaEspecial.kilometraje && !cargaEspecial.ignorar_kilometraje && parseInt(cargaEspecial.kilometraje) > (cargaEspecial.ultimo_kilometraje || 0) && (
+                      <span className="text-emerald-500 dark:text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 text-[10px]">
+                        Alcance: {(parseInt(cargaEspecial.kilometraje) - (cargaEspecial.ultimo_kilometraje || 0)).toLocaleString()} KM
+                      </span>
+                    )}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -2045,6 +2056,11 @@ const Combustibles = () => {
                           <div className="flex flex-col gap-1 text-xs">
                             <span className="text-slate-500">Ant: <strong className="text-slate-400">{carga.ultimo_kilometraje}</strong></span>
                             <span className="text-slate-500">Act: <strong className="text-white">{carga.ignorar_kilometraje ? '---' : carga.kilometraje}</strong></span>
+                            {carga.alcance > 0 && !carga.ignorar_kilometraje && (
+                              <span className="text-emerald-400 font-bold text-[10px] bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 w-fit">
+                                Alcance: {carga.alcance.toLocaleString()} KM
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
@@ -2745,6 +2761,7 @@ const Combustibles = () => {
                       <th className="px-4 py-3 font-semibold text-right">Precio/L</th>
                       <th className="px-4 py-3 font-semibold text-right">Total</th>
                       <th className="px-4 py-3 font-semibold text-right">Kilometraje</th>
+                      <th className="px-4 py-3 font-semibold text-right">Alcance (KM)</th>
                       <th className="px-4 py-3 font-semibold text-center">Acciones</th>
                     </tr>
                   </thead>
@@ -2801,6 +2818,9 @@ const Combustibles = () => {
                                 </label>
                               </div>
                             </td>
+                            <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                              -
+                            </td>
                             <td className="px-4 py-3 text-center flex justify-center gap-2">
                               <button onClick={() => handleSaveEdit(carga.id)} className="text-emerald-500 hover:text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 p-1.5 rounded-lg"><Check size={18} /></button>
                               <button onClick={() => setEditingCargaId(null)} className="text-slate-400 hover:text-slate-600 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-lg"><XCircle size={18} /></button>
@@ -2828,9 +2848,23 @@ const Combustibles = () => {
                                   <span className="font-mono text-amber-500">{carga.kilometraje}</span>
                                 </div>
                               ) : (
-                                <span className="font-mono text-slate-600 dark:text-slate-300">
-                                  {carga.kilometraje}
-                                </span>
+                                <div className="flex flex-col items-end">
+                                  <span className="font-mono text-slate-600 dark:text-slate-300">
+                                    {carga.kilometraje}
+                                  </span>
+                                  {carga.rendimiento > 0 && (
+                                    <span className="text-[10px] font-bold text-emerald-500">
+                                      {carga.rendimiento} km/l
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                              {carga.alcance !== null && carga.alcance !== undefined ? (
+                                `${carga.alcance.toLocaleString()} KM`
+                              ) : (
+                                <span className="text-slate-400 font-normal text-xs">-</span>
                               )}
                             </td>
                             <td className="px-4 py-3 text-center flex justify-center gap-1.5">

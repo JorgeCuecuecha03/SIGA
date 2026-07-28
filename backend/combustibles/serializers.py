@@ -1,3 +1,4 @@
+from django.db import models
 from rest_framework import serializers
 from .models import PrecioCombustible, CargaCombustible, BloqueCargaCombustible
 from vehiculos.models import UnidadTractocamion
@@ -9,6 +10,7 @@ class PrecioCombustibleSerializer(serializers.ModelSerializer):
 
 class CargaCombustibleSerializer(serializers.ModelSerializer):
     unidad_detalle = serializers.SerializerMethodField()
+    alcance = serializers.SerializerMethodField()
     unidad = serializers.PrimaryKeyRelatedField(queryset=UnidadTractocamion.objects.all(), required=False, allow_null=True)
     precio_unitario = serializers.FloatField(required=False)
     monto_total = serializers.FloatField(required=False)
@@ -25,6 +27,26 @@ class CargaCombustibleSerializer(serializers.ModelSerializer):
         if obj.unidad_variada:
             return obj.unidad_variada.numero_economico
         return 'Desconocido'
+
+    def get_alcance(self, obj):
+        if obj.ignorar_kilometraje or obj.kilometraje is None:
+            return None
+        unidad_filter = {'unidad': obj.unidad} if obj.unidad else ({'unidad_variada': obj.unidad_variada} if obj.unidad_variada else None)
+        if not unidad_filter:
+            return None
+
+        prev_carga = CargaCombustible.objects.filter(
+            **unidad_filter,
+            ignorar_kilometraje=False,
+            kilometraje__isnull=False
+        ).filter(
+            models.Q(fecha__lt=obj.fecha) | models.Q(fecha=obj.fecha, fecha_registro__lt=obj.fecha_registro)
+        ).exclude(id=obj.id if obj.id else None).order_by('-fecha', '-fecha_registro').first()
+
+        if prev_carga and prev_carga.kilometraje is not None:
+            diff = obj.kilometraje - prev_carga.kilometraje
+            return diff if diff > 0 else 0
+        return None
 
 class BloqueCargaCombustibleSerializer(serializers.ModelSerializer):
     cargas = CargaCombustibleSerializer(many=True, read_only=True)
