@@ -276,13 +276,15 @@ const Dashboard = () => {
                     </div>
                   </div>
 
-                  <button 
-                    onClick={() => handleResetMantenimiento(p.id, p.numero_economico)}
-                    className="mt-5 w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 dark:hover:bg-blue-600 text-slate-700 dark:text-slate-300 hover:text-white dark:hover:text-white transition-all font-black text-xs uppercase tracking-wider"
-                  >
-                    <CheckCircle2 size={16} />
-                    Registrar Mantenimiento
-                  </button>
+                  {user?.rol === 'admin_general' && (
+                    <button 
+                      onClick={() => handleResetMantenimiento(p.id, p.numero_economico)}
+                      className="mt-5 w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-600 dark:hover:bg-blue-600 text-slate-700 dark:text-slate-300 hover:text-white dark:hover:text-white transition-all font-black text-xs uppercase tracking-wider"
+                    >
+                      <CheckCircle2 size={16} />
+                      Registrar Mantenimiento
+                    </button>
+                  )}
                 </div>
               );
             })}

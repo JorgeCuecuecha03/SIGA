@@ -228,6 +228,7 @@ class Factura(models.Model):
     archivo_escaneado = models.FileField(upload_to='facturas/%Y/%m/', verbose_name="Documento Escaneado", null=True, blank=True)
     iva_aplicado = models.BooleanField(default=False, verbose_name="IVA Aplicado")
     resico_aplicado = models.BooleanField(default=False, verbose_name="RESICO Aplicado")
+    es_preventivo = models.BooleanField(default=False, verbose_name="¿Mantenimiento Preventivo?")
     fecha_registro = models.DateTimeField(auto_now_add=True)
 
     class Meta:

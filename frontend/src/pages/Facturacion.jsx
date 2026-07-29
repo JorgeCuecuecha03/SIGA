@@ -538,6 +538,12 @@ const Facturacion = () => {
                         {f.producto_categoria}: {f.producto_nombre}
                       </div>
                     )}
+                    {f.es_preventivo && (
+                      <div className="flex items-center gap-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-black px-2 py-1 rounded-md mt-1.5 border border-amber-500/20 uppercase tracking-wide w-fit">
+                        <Wrench size={12} className="text-amber-500" />
+                        Mantenimiento Preventivo
+                      </div>
+                    )}
                   </div>
                   <div className="text-right shrink-0 ml-4">
                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">Monto</p>
@@ -811,6 +817,16 @@ const Facturacion = () => {
                   </p>
                 </div>
               </div>
+
+              {selectedFactura.es_preventivo && (
+                <div className="bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-2xl flex items-center gap-3">
+                  <Wrench className="text-amber-500 shrink-0" size={20} />
+                  <div>
+                    <p className="text-amber-600 dark:text-amber-400 text-xs font-black uppercase tracking-wider">Mantenimiento Preventivo</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-[11px] font-medium">Esta factura reinició los contadores de mantenimiento de las unidades asignadas.</p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-slate-50 dark:bg-slate-950/50 p-5 rounded-3xl border border-slate-100 dark:border-slate-800/50 space-y-3">

@@ -619,8 +619,8 @@ const AltaFactura = ({ onSuccess, onClose, factura, existingFacturas = [] }) => 
     if (formData.rfc_emisor) data.append('rfc_emisor', formData.rfc_emisor);
     if (formData.razon_social_emisor) data.append('razon_social_emisor', formData.razon_social_emisor);
     
+    data.append('es_preventivo', esPreventivo ? 'true' : 'false');
     if (esPreventivo) {
-      data.append('es_preventivo', true);
       data.append('fecha_servicio', usaFechaDiferente ? fechaServicio : formData.fecha);
       if (unidadesMantenimiento.length > 0) {
         data.append('unidades_mantenimiento', JSON.stringify(unidadesMantenimiento));

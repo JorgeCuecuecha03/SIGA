@@ -244,21 +244,10 @@ class FacturaViewSet(viewsets.ModelViewSet):
         response['Content-Disposition'] = f'attachment; filename="facturas_{fecha_inicio}_a_{fecha_fin}.pdf"'
         return response
 
-    def perform_create(self, serializer):
-        factura = serializer.save()
-        user = self.request.user if self.request.user.is_authenticated else None
-        
-        monto = factura.monto if hasattr(factura, 'monto') else 'N/A'
-        
-        HistorialAccion.objects.create(
-            user=user,
-            accion="Alta de Factura",
-            detalles=f"Se ha dado de alta la factura con folio {factura.folio}."
-        )
-
-        es_preventivo = self.request.data.get('es_preventivo') == 'true' or self.request.data.get('es_preventivo') is True
+    def procesar_mantenimiento_preventivo(self, factura, data):
+        es_preventivo = data.get('es_preventivo') == 'true' or data.get('es_preventivo') is True or getattr(factura, 'es_preventivo', False)
         if es_preventivo:
-            fecha_servicio = self.request.data.get('fecha_servicio')
+            fecha_servicio = data.get('fecha_servicio')
             if not fecha_servicio:
                 fecha_servicio = factura.fecha
 
@@ -266,14 +255,13 @@ class FacturaViewSet(viewsets.ModelViewSet):
             if isinstance(fecha_servicio, str):
                 fecha_servicio = parse_date(fecha_servicio)
 
-            # Extraemos las unidades primarias o del arreglo
             unidades_a_reiniciar = set()
             
-            unidades_mantenimiento_raw = self.request.data.get('unidades_mantenimiento')
+            unidades_mantenimiento_raw = data.get('unidades_mantenimiento')
             if unidades_mantenimiento_raw:
                 import json
                 try:
-                    selected_ids = set(json.loads(unidades_mantenimiento_raw))
+                    selected_ids = set(json.loads(unidades_mantenimiento_raw)) if isinstance(unidades_mantenimiento_raw, str) else set(unidades_mantenimiento_raw)
                     from vehiculos.models import UnidadTractocamion
                     for u in UnidadTractocamion.objects.filter(id__in=selected_ids):
                         unidades_a_reiniciar.add(u)
@@ -286,11 +274,28 @@ class FacturaViewSet(viewsets.ModelViewSet):
                 for u in factura.unidades.all():
                     unidades_a_reiniciar.add(u)
 
-            # Las cajas y variados no tienen ultimo_kilometraje_mantenimiento en sus modelos base
             for unidad in unidades_a_reiniciar:
                 unidad.ultimo_kilometraje_mantenimiento = unidad.ultimo_kilometraje
                 unidad.fecha_ultimo_mantenimiento = fecha_servicio
                 unidad.save()
+
+    def perform_create(self, serializer):
+        factura = serializer.save()
+        user = self.request.user if self.request.user.is_authenticated else None
+        
+        monto = factura.monto if hasattr(factura, 'monto') else 'N/A'
+        
+        HistorialAccion.objects.create(
+            user=user,
+            accion="Alta de Factura",
+            detalles=f"Se ha dado de alta la factura con folio {factura.folio}."
+        )
+
+        self.procesar_mantenimiento_preventivo(factura, self.request.data)
+
+    def perform_update(self, serializer):
+        factura = serializer.save()
+        self.procesar_mantenimiento_preventivo(factura, self.request.data)
 
     def update(self, request, *args, **kwargs):
         user = request.user
@@ -449,7 +454,8 @@ class SolicitudCambioFacturaViewSet(viewsets.ModelViewSet):
             # Usar FacturaSerializer con partial=True para validar los cambios
             serializer = FacturaSerializer(solicitud.factura, data=cambios, partial=True)
             if serializer.is_valid():
-                serializer.save()
+                factura_actualizada = serializer.save()
+                FacturaViewSet().procesar_mantenimiento_preventivo(factura_actualizada, cambios)
                 
                 solicitud.estado = 'Aprobada'
                 solicitud.autorizador = request.user
