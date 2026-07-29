@@ -25,7 +25,7 @@ const AltaVehiculo = ({ onSuccess, onClose, vehiculo = null }) => {
     marca_modelo: vehiculo ? `${vehiculo.marca} ${vehiculo.modelo}`.trim() : '',
     anio: vehiculo?.anio || '',
     numero_vin: vehiculo?.numero_vin || '',
-    capacidad: vehiculo?.capacidad || '10.0',
+    capacidad: vehiculo?.capacidad !== undefined && vehiculo?.capacidad !== null ? String(parseFloat(vehiculo.capacidad).toFixed(1)) : '10.0',
     tipo_combustible: vehiculo?.tipo_combustible || 'diesel',
     imagen: null
   });
