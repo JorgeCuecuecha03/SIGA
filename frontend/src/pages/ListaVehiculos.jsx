@@ -41,6 +41,17 @@ import AnalisisGastos from './AnalisisGastos';
 import notify from '../utils/notifications';
 import { formatMediaUrl } from '../utils/media';
 
+const getFuelLabel = (type) => {
+  switch (type) {
+    case 'diesel': return 'Diesel';
+    case 'magna': return 'Gasolina Magna';
+    case 'premium': return 'Gasolina Premium';
+    case 'electrico': return 'Eléctrico';
+    case 'gas_lp': return 'Gas LP';
+    default: return type ? type.toUpperCase() : 'Diesel';
+  }
+};
+
 const ListaVehiculos = () => {
   const [vehiculos, setVehiculos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -703,6 +714,17 @@ const ListaVehiculos = () => {
                             <span className="truncate">{v.numero_vin || 'N/A'}</span>
                           </p>
                         </div>
+                      </div>
+
+                      {/* Indicador de Tipo de Combustible */}
+                      <div className="bg-amber-500/10 dark:bg-amber-500/10 border border-amber-500/20 rounded-xl lg:rounded-2xl p-3 flex items-center justify-between shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <Droplets size={16} className="text-amber-500 shrink-0" />
+                          <span className="text-[10px] lg:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tipo de Combustible</span>
+                        </div>
+                        <span className="text-xs lg:text-sm font-black text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+                          {getFuelLabel(v.tipo_combustible)}
+                        </span>
                       </div>
 
                       {/* Fuel & Efficiency Section */}

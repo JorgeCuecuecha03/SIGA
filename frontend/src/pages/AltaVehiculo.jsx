@@ -247,6 +247,7 @@ const AltaVehiculo = ({ onSuccess, onClose, vehiculo = null }) => {
                   <option value="diesel" className="bg-white dark:bg-slate-900">Diesel</option>
                   <option value="magna" className="bg-white dark:bg-slate-900">Gasolina Magna</option>
                   <option value="premium" className="bg-white dark:bg-slate-900">Gasolina Premium</option>
+                  <option value="gas_lp" className="bg-white dark:bg-slate-900">Gas LP</option>
                   <option value="electrico" className="bg-white dark:bg-slate-900">Eléctrico</option>
                 </select>
               </div>
