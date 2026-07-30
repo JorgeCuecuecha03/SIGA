@@ -532,7 +532,7 @@ const Logistica = () => {
           )}
           <span className="relative z-10 flex items-center gap-2">
             <DollarSign size={18} />
-            Pagos Efectivo
+            Contrarecibo
           </span>
         </button>
       </div>
