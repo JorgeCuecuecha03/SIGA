@@ -178,6 +178,18 @@ export default function ContraRecibosEfectivo() {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('¿Estás seguro de eliminar este contra recibo temporalmente?')) return;
+    try {
+      await api.delete(`contra-recibos/${id}/`);
+      toast.success('Contra recibo eliminado exitosamente');
+      fetchHistorial();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al eliminar el contra recibo');
+    }
+  };
+
   const totalImporte = facturas.reduce((sum, f) => sum + parseFloat(f.importe || 0), 0);
 
   return (
@@ -547,7 +559,7 @@ export default function ContraRecibosEfectivo() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white">
                         ${parseFloat(cr.subtotal).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm flex justify-end gap-2">
                         <button
                           onClick={() => downloadPDF(cr.id, cr.folio)}
                           className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 inline-flex items-center gap-1 font-bold bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-lg transition-colors"
@@ -555,6 +567,14 @@ export default function ContraRecibosEfectivo() {
                         >
                           <Download className="w-4 h-4" />
                           <span>PDF</span>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(cr.id)}
+                          className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 inline-flex items-center gap-1 font-bold bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
+                          title="Eliminar (Temporal)"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Borrar</span>
                         </button>
                       </td>
                     </tr>
