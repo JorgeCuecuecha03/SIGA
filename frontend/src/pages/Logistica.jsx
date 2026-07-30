@@ -30,6 +30,7 @@ import {
 import Combustibles from './Combustibles';
 import Bonos from './Bonos';
 import Bitacoras from './Bitacoras';
+import ContraRecibosEfectivo from './ContraRecibosEfectivo';
 
 const Logistica = () => {
   const { user } = useContext(AuthContext);
@@ -518,6 +519,22 @@ const Logistica = () => {
             Bitácoras
           </span>
         </button>
+        <button
+          onClick={() => setActiveTab('contrarecibos_efectivo')}
+          className={`relative flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-full font-bold transition-all duration-300 ease-out overflow-hidden ${
+            activeTab === 'contrarecibos_efectivo' 
+              ? 'text-white shadow-lg shadow-blue-900/20' 
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800/50'
+          }`}
+        >
+          {activeTab === 'contrarecibos_efectivo' && (
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-500 rounded-full" />
+          )}
+          <span className="relative z-10 flex items-center gap-2">
+            <DollarSign size={18} />
+            Pagos Efectivo
+          </span>
+        </button>
       </div>
 
       {activeTab === 'monitor' && (
@@ -707,6 +724,7 @@ const Logistica = () => {
       {activeTab === 'combustible' && <Combustibles />}
       {activeTab === 'bonos' && <Bonos />}
       {activeTab === 'bitacoras' && <Bitacoras />}
+      {activeTab === 'contrarecibos_efectivo' && <ContraRecibosEfectivo />}
 
       {/* Modal Registrar Salida */}
       {isModalOpen && (
