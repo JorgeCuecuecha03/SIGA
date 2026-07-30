@@ -37,6 +37,7 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCapturistaOpen, setIsCapturistaOpen] = useState(false);
+  const [isLogisticaOpen, setIsLogisticaOpen] = useState(false);
   const [isPerfilModalOpen, setIsPerfilModalOpen] = useState(false);
   const [openMenus, setOpenMenus] = useState({});
   const { user, logout } = useContext(AuthContext);
@@ -75,19 +76,23 @@ const DashboardLayout = () => {
     },
   ];
 
-  const capturistaItems = [
+  const logisticaItems = [
     { icon: <Users size={20} />, label: 'Operadores', path: '/operadores', roles: ['admin_general', 'admin', 'jefe_logistica'] },
     { icon: <MapPin size={20} />, label: 'Logística', path: '/logistica', roles: ['admin_general', 'admin', 'jefe_logistica'] },
+    { icon: <Truck size={20} />, label: 'Vehículos', path: '/vehiculos', roles: ['admin_general', 'admin', 'capturista', 'jefe_logistica'] },
+    { icon: <Droplets size={20} />, label: 'Combustible', path: '/combustible', roles: ['admin_general', 'admin', 'capturista', 'jefe_logistica'] },
+  ];
+
+  const capturistaItems = [
     { icon: <FilePlus size={20} />, label: 'Facturación', path: '/facturacion', roles: ['admin_general', 'admin', 'capturista', 'lector_gastos', 'jefe_logistica'] },
     { icon: <Receipt size={20} />, label: 'Contra Recibos', path: '/contra-recibos', roles: ['admin_general', 'admin', 'capturista'] },
     { icon: <Ticket size={20} />, label: 'Tickets', path: '/tickets', roles: ['admin_general', 'admin', 'capturista', 'lector_gastos'] },
     { icon: <LayoutGrid size={20} />, label: 'Catálogos', path: '/catalogos', roles: ['admin_general', 'admin', 'capturista'] },
-    { icon: <Truck size={20} />, label: 'Vehículos', path: '/vehiculos', roles: ['admin_general', 'admin', 'capturista', 'jefe_logistica'] },
     { icon: <Wrench size={20} />, label: 'Mantenimiento', path: '/mantenimiento', roles: ['admin_general', 'admin', 'capturista'] },
-    { icon: <Droplets size={20} />, label: 'Combustible', path: '/combustible', roles: ['admin_general', 'admin', 'capturista', 'jefe_logistica'] },
   ];
 
   const filteredMainItems = mainItems.filter(item => !item.roles || item.roles.includes(user?.rol || 'admin'));
+  const filteredLogisticaItems = logisticaItems.filter(item => !item.roles || item.roles.includes(user?.rol || 'admin'));
   const filteredCapturistaItems = capturistaItems.filter(item => !item.roles || item.roles.includes(user?.rol || 'admin'));
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -194,48 +199,62 @@ const DashboardLayout = () => {
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
           {filteredMainItems.map(renderMenuItem)}
           
-          {filteredCapturistaItems.length > 0 && (
-            isAdmin ? (
-              <div className="mt-2">
-                <button
-                  onClick={() => setIsCapturistaOpen(!isCapturistaOpen)}
-                  className="flex items-center justify-between w-full px-4 py-3 rounded-xl transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-slate-200"
-                >
-                  <div className="flex items-center gap-3">
-                    <Briefcase size={20} />
-                    <span className="font-medium">Opciones Capturista</span>
-                  </div>
-                  {isCapturistaOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                </button>
-                
-                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isCapturistaOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
-                  <div className="pl-4 space-y-1 border-l-2 border-slate-100 dark:border-slate-800 ml-6 mt-1">
-                    {filteredCapturistaItems.map(item => (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        onClick={() => setIsSidebarOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm ${location.pathname === item.path
-                          ? 'bg-blue-600/10 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-bold'
-                          : 'text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                          }`}
-                      >
-                        {item.icon}
-                        <span>{item.label}</span>
-                      </Link>
-                    ))}
+          {isAdmin ? (
+            <>
+              {filteredLogisticaItems.length > 0 && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => setIsLogisticaOpen(!isLogisticaOpen)}
+                    className="flex items-center justify-between w-full px-4 py-3 rounded-xl transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-slate-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Truck size={20} />
+                      <span className="font-medium">Opciones Logística</span>
+                    </div>
+                    {isLogisticaOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  </button>
+                  <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isLogisticaOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+                    <div className="pl-4 space-y-1 border-l-2 border-slate-100 dark:border-slate-800 ml-6 mt-1">
+                      {filteredLogisticaItems.map(item => (
+                        <Link key={item.path} to={item.path} onClick={() => setIsSidebarOpen(false)} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm ${location.pathname === item.path ? 'bg-blue-600/10 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                          {item.icon}<span>{item.label}</span>
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <>
-                {/* Visual separator for non-admins if they have both main items and capturista items */}
-                {filteredMainItems.length > 0 && (
-                  <div className="h-px bg-slate-200 dark:bg-slate-800 my-4 mx-2"></div>
-                )}
-                {filteredCapturistaItems.map(renderMenuItem)}
-              </>
-            )
+              )}
+              {filteredCapturistaItems.length > 0 && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => setIsCapturistaOpen(!isCapturistaOpen)}
+                    className="flex items-center justify-between w-full px-4 py-3 rounded-xl transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-slate-200"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Briefcase size={20} />
+                      <span className="font-medium">Opciones Capturista</span>
+                    </div>
+                    {isCapturistaOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  </button>
+                  <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isCapturistaOpen ? 'max-h-[500px] opacity-100 mt-1' : 'max-h-0 opacity-0'}`}>
+                    <div className="pl-4 space-y-1 border-l-2 border-slate-100 dark:border-slate-800 ml-6 mt-1">
+                      {filteredCapturistaItems.map(item => (
+                        <Link key={item.path} to={item.path} onClick={() => setIsSidebarOpen(false)} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm ${location.pathname === item.path ? 'bg-blue-600/10 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                          {item.icon}<span>{item.label}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {filteredMainItems.length > 0 && (filteredLogisticaItems.length > 0 || filteredCapturistaItems.length > 0) && (
+                <div className="h-px bg-slate-200 dark:bg-slate-800 my-4 mx-2"></div>
+              )}
+              {[...filteredLogisticaItems, ...filteredCapturistaItems].map(renderMenuItem)}
+            </>
           )}
         </nav>
 
