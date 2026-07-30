@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 import { Plus, Download, Search, Check, X, FileText, Trash2, Printer, Store, Banknote, PlusCircle, History } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ContraRecibosEfectivo() {
+  const { user } = useContext(AuthContext);
   const [activeTab, setActiveTab] = useState('new'); // 'new' | 'history'
   
   // Catálogos
@@ -568,14 +570,16 @@ export default function ContraRecibosEfectivo() {
                           <Download className="w-4 h-4" />
                           <span>PDF</span>
                         </button>
-                        <button
-                          onClick={() => handleDelete(cr.id)}
-                          className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 inline-flex items-center gap-1 font-bold bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
-                          title="Eliminar (Temporal)"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          <span>Borrar</span>
-                        </button>
+                        {user?.rol === 'admin_general' && (
+                          <button
+                            onClick={() => handleDelete(cr.id)}
+                            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 inline-flex items-center gap-1 font-bold bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
+                            title="Eliminar (Temporal)"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span>Borrar</span>
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )) : (
