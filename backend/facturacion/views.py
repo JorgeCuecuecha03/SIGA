@@ -661,13 +661,17 @@ class ContraReciboViewSet(viewsets.ModelViewSet):
         all_invoices = cr.facturas_detalle.all()
         accepted_invoices = cr.facturas_detalle.filter(estado='Aceptada')
         
-        # Copia Proveedor (Todas las facturas)
-        elements.extend(build_copy("COPIA PROVEEDOR", all_invoices, is_company_copy=False))
-        
-        elements.append(PageBreak())
-        
-        # Copia Empresa (Solo Aceptadas)
-        elements.extend(build_copy("COPIA EMPRESA", accepted_invoices, is_company_copy=True))
+        if cr.es_efectivo:
+            # Para pagos en efectivo, solo se genera una sola hoja (Comprobante Único)
+            elements.extend(build_copy("PAGO EN EFECTIVO (COMPROBANTE ÚNICO)", all_invoices, is_company_copy=False))
+        else:
+            # Copia Proveedor (Todas las facturas)
+            elements.extend(build_copy("COPIA PROVEEDOR", all_invoices, is_company_copy=False))
+            
+            elements.append(PageBreak())
+            
+            # Copia Empresa (Solo Aceptadas)
+            elements.extend(build_copy("COPIA EMPRESA", accepted_invoices, is_company_copy=True))
         
         doc.build(elements)
         return response

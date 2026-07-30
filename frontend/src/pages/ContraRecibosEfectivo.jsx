@@ -125,6 +125,7 @@ export default function ContraRecibosEfectivo() {
       proveedor: origenTipo === 'proveedor' ? origenId : null,
       taller: origenTipo === 'taller' ? origenId : null,
       resico_aplicado: resicoAplicado,
+      es_efectivo: true,
       total_facturas: facturas.length,
       subtotal: facturas.reduce((sum, f) => sum + parseFloat(f.importe || 0), 0),
       facturas_detalle: facturas.map(f => ({
