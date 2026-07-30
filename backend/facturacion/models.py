@@ -358,6 +358,7 @@ class ContraRecibo(models.Model):
     total_facturas = models.IntegerField(default=0, verbose_name="Total de Facturas")
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Subtotal")
     es_efectivo = models.BooleanField(default=False, verbose_name="¿Es pago en efectivo?")
+    sin_desglose = models.BooleanField(default=False, verbose_name="Sin Desglose de Impuestos")
 
     class Meta:
         verbose_name = "Contra Recibo"

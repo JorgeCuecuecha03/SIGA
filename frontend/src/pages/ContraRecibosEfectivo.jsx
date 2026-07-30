@@ -16,6 +16,7 @@ export default function ContraRecibosEfectivo() {
   const [origenTipo, setOrigenTipo] = useState('proveedor');
   const [origenId, setOrigenId] = useState('');
   const [resicoAplicado, setResicoAplicado] = useState(false);
+  const [sinDesglose, setSinDesglose] = useState(false);
   const [facturas, setFacturas] = useState([]);
   
   const [busquedaEntidad, setBusquedaEntidad] = useState('');
@@ -128,6 +129,7 @@ export default function ContraRecibosEfectivo() {
       taller: origenTipo === 'taller' ? origenId : null,
       resico_aplicado: resicoAplicado,
       es_efectivo: true,
+      sin_desglose: sinDesglose,
       total_facturas: facturas.length,
       subtotal: facturas.reduce((sum, f) => sum + parseFloat(f.importe || 0), 0),
       facturas_detalle: facturas.map(f => ({
@@ -153,6 +155,7 @@ export default function ContraRecibosEfectivo() {
       setBusquedaEntidad('');
       setEntidadSeleccionada(null);
       setResicoAplicado(false);
+      setSinDesglose(false);
       setFacturas([]);
       setActiveTab('history');
       fetchHistorial();
@@ -299,7 +302,7 @@ export default function ContraRecibosEfectivo() {
                 </div>
               </div>
 
-              <div className="flex items-end mb-2">
+              <div className="flex items-end mb-2 gap-4">
                 <div className="flex items-center">
                   <input
                     id="resico_efectivo"
@@ -310,6 +313,18 @@ export default function ContraRecibosEfectivo() {
                   />
                   <label htmlFor="resico_efectivo" className="ml-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                     Aplica RESICO
+                  </label>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    id="sin_desglose"
+                    type="checkbox"
+                    checked={sinDesglose}
+                    onChange={(e) => setSinDesglose(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 dark:focus:ring-emerald-600 focus:ring-2 dark:bg-slate-700 dark:border-slate-600"
+                  />
+                  <label htmlFor="sin_desglose" className="ml-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Sin desglose (Subtotal/IVA)
                   </label>
                 </div>
               </div>
@@ -482,6 +497,7 @@ export default function ContraRecibosEfectivo() {
                 setOrigenId('');
                 setBusquedaEntidad('');
                 setEntidadSeleccionada(null);
+                setSinDesglose(false);
               }}
               className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
             >

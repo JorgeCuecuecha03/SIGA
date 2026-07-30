@@ -552,7 +552,10 @@ class ContraReciboViewSet(viewsets.ModelViewSet):
             copy_elements.append(Paragraph("Dirección: Lucero 1B, San Miguel Contla, 90640 San Miguel Contla, Tlax.", sub_header_style))
             copy_elements.append(Spacer(1, 10))
             
-            copy_elements.append(Paragraph(f"Contra Recibo: {cr.folio} - {title_suffix}", title_style))
+            if title_suffix:
+                copy_elements.append(Paragraph(f"Contra Recibo: {cr.folio} - {title_suffix}", title_style))
+            else:
+                copy_elements.append(Paragraph(f"Contra Recibo: {cr.folio}", title_style))
             
             prov_nombre = cr.proveedor.nombre if cr.proveedor else (cr.taller.nombre if cr.taller else 'N/A')
             copy_elements.append(Paragraph(f"<b>Recibido de:</b> {prov_nombre}", info_style))
@@ -589,12 +592,15 @@ class ContraReciboViewSet(viewsets.ModelViewSet):
                 sum_iva += iva_fac
                 count_copy += 1
                 
+                val_subtotal = "" if cr.sin_desglose else f"${subtotal_fac:,.2f}"
+                val_iva = "" if cr.sin_desglose else f"${iva_fac:,.2f}"
+
                 if is_company_copy:
                     data.append([
                         factura.folio_factura,
                         factura.fecha_emision.strftime('%d/%m/%Y'),
-                        f"${subtotal_fac:,.2f}",
-                        f"${iva_fac:,.2f}",
+                        val_subtotal,
+                        val_iva,
                         f"${total_fac:,.2f}",
                         factura.estado
                     ])
@@ -602,8 +608,8 @@ class ContraReciboViewSet(viewsets.ModelViewSet):
                     data.append([
                         factura.folio_factura,
                         factura.fecha_emision.strftime('%d/%m/%Y'),
-                        f"${subtotal_fac:,.2f}",
-                        f"${iva_fac:,.2f}",
+                        val_subtotal,
+                        val_iva,
                         f"${total_fac:,.2f}",
                         factura.estado,
                         texto_rechazo
@@ -632,8 +638,9 @@ class ContraReciboViewSet(viewsets.ModelViewSet):
             
             # Totales
             copy_elements.append(Paragraph(f"<b>Total Facturas:</b> {count_copy}", totals_style))
-            copy_elements.append(Paragraph(f"<b>Suma Subtotal:</b> ${sum_subtotal:,.2f}", totals_style))
-            copy_elements.append(Paragraph(f"<b>Suma IVA:</b> ${sum_iva:,.2f}", totals_style))
+            if not cr.sin_desglose:
+                copy_elements.append(Paragraph(f"<b>Suma Subtotal:</b> ${sum_subtotal:,.2f}", totals_style))
+                copy_elements.append(Paragraph(f"<b>Suma IVA:</b> ${sum_iva:,.2f}", totals_style))
             copy_elements.append(Paragraph(f"<b>Suma Total:</b> ${sum_total:,.2f}", totals_style))
             
             if cr.resico_aplicado:
@@ -642,19 +649,20 @@ class ContraReciboViewSet(viewsets.ModelViewSet):
                 copy_elements.append(Paragraph(f"<b>Retención RESICO (1.25%):</b> -${resico:,.2f}", totals_style))
                 copy_elements.append(Paragraph(f"<b>Gran Total a Pagar:</b> ${gran_total:,.2f}", totals_style))
             
-            sig_data = [
-                ['_________________________', '_________________________'],
-                ['Entregado por (Proveedor)', 'Recibido por (Capturista)']
-            ]
-            sig_table = Table(sig_data, colWidths=[3.5*inch, 3.5*inch])
-            sig_table.setStyle(TableStyle([
-                ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-                ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
-                ('FONTSIZE', (0,0), (-1,-1), 10),
-                ('TOPPADDING', (0,0), (-1,-1), 15),
-            ]))
-            
-            copy_elements.append(BottomContainer(sig_table))
+            if not cr.es_efectivo:
+                sig_data = [
+                    ['_________________________', '_________________________'],
+                    ['Entregado por (Proveedor)', 'Recibido por (Capturista)']
+                ]
+                sig_table = Table(sig_data, colWidths=[3.5*inch, 3.5*inch])
+                sig_table.setStyle(TableStyle([
+                    ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                    ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+                    ('FONTSIZE', (0,0), (-1,-1), 10),
+                    ('TOPPADDING', (0,0), (-1,-1), 15),
+                ]))
+                
+                copy_elements.append(BottomContainer(sig_table))
             
             return copy_elements
 
@@ -663,7 +671,7 @@ class ContraReciboViewSet(viewsets.ModelViewSet):
         
         if cr.es_efectivo:
             # Para pagos en efectivo, solo se genera una sola hoja (Comprobante Único)
-            elements.extend(build_copy("PAGO EN EFECTIVO (COMPROBANTE ÚNICO)", all_invoices, is_company_copy=False))
+            elements.extend(build_copy("", all_invoices, is_company_copy=False))
         else:
             # Copia Proveedor (Todas las facturas)
             elements.extend(build_copy("COPIA PROVEEDOR", all_invoices, is_company_copy=False))
