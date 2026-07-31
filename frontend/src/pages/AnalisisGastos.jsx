@@ -284,24 +284,28 @@ const AnalisisGastos = ({ facturas, vehiculos, cajas = [], variados = [], cargas
               Analizar gastos por unidad
             </label>
             
-            <div className="relative group min-w-[250px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={14} />
+            <div className="relative group w-full sm:max-w-md">
+              <div className="absolute inset-y-0 left-4 lg:left-5 flex items-center pointer-events-none">
+                <Search className="text-slate-500 group-focus-within:text-blue-500 transition-colors" size={20} />
+              </div>
               <input
                 type="text"
                 placeholder="Buscar por eco o placas..."
                 value={busquedaUnidad}
                 onChange={(e) => setBusquedaUnidad(e.target.value)}
-                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-4 py-2 text-xs text-slate-900 dark:text-white focus:border-blue-500 outline-none transition-all shadow-inner placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl lg:rounded-2xl pl-12 lg:pl-14 pr-4 lg:pr-6 py-3 lg:py-4 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all text-base lg:text-lg placeholder:text-slate-400 dark:placeholder:text-slate-600 shadow-xl"
               />
             </div>
           </div>
  
           <div className="relative">
-            <Truck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+            <div className="absolute inset-y-0 left-4 lg:left-5 flex items-center pointer-events-none">
+              <Truck className="text-slate-500" size={20} />
+            </div>
             <select
               value={unidadSeleccionada}
               onChange={(e) => setUnidadSeleccionada(e.target.value)}
-              className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-12 pr-4 py-3 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all appearance-none font-medium cursor-pointer shadow-inner"
+              className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-xl lg:rounded-2xl pl-12 lg:pl-14 pr-4 lg:pr-6 py-3 lg:py-4 text-slate-900 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none transition-all appearance-none text-base lg:text-lg font-medium cursor-pointer shadow-xl"
             >
               <option value="todas">
                 {busquedaUnidad 
