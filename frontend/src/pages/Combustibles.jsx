@@ -2144,7 +2144,7 @@ const Combustibles = () => {
                   Descargar PDF
                 </button>
               )}
-              {(historialTipo === 'normal' || historialTipo === 'especial') && (
+              {(historialTipo === 'normal' || historialTipo === 'especial') && user?.rol === 'admin_general' && (
                 <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-200 dark:border-slate-700">
                   <Search className="text-blue-500 dark:text-blue-400 ml-2" size={18} />
                   <input 
@@ -2366,6 +2366,12 @@ const Combustibles = () => {
                     {historialEspecial.filter(bloque => {
                       if (!busquedaLitros) return true;
                       return bloque.cargas?.some(carga => carga.litros?.toString().includes(busquedaLitros));
+                    }).sort((a, b) => {
+                      const fechasA = a.cargas?.map(c => new Date(c.fecha + 'T12:00:00').getTime()) || [];
+                      const minA = fechasA.length > 0 ? Math.min(...fechasA) : 0;
+                      const fechasB = b.cargas?.map(c => new Date(c.fecha + 'T12:00:00').getTime()) || [];
+                      const minB = fechasB.length > 0 ? Math.min(...fechasB) : 0;
+                      return minB - minA;
                     }).map((bloque, idx) => {
                       const fechas = bloque.cargas?.map(c => new Date(c.fecha + 'T12:00:00').getTime()) || [];
                       const minDate = fechas.length > 0 ? new Date(Math.min(...fechas)).toLocaleDateString('es-MX') : 'N/A';
