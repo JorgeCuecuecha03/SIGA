@@ -253,6 +253,7 @@ const Combustibles = () => {
   });
   const [busquedaNuevaCarga, setBusquedaNuevaCarga] = useState('');
   const [busquedaNuevaCargaFocus, setBusquedaNuevaCargaFocus] = useState(false);
+  const [busquedaLitros, setBusquedaLitros] = useState('');
 
   // States for Totalizador
   const [totalizadorData, setTotalizadorData] = useState([]);
@@ -2143,6 +2144,18 @@ const Combustibles = () => {
                   Descargar PDF
                 </button>
               )}
+              {(historialTipo === 'normal' || historialTipo === 'especial') && (
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  <Search className="text-blue-500 dark:text-blue-400 ml-2" size={18} />
+                  <input 
+                    type="text"
+                    placeholder="Buscar por litros..."
+                    value={busquedaLitros}
+                    onChange={(e) => setBusquedaLitros(e.target.value)}
+                    className="bg-transparent border-none text-slate-900 dark:text-white focus:ring-0 p-1 font-medium outline-none text-sm w-36"
+                  />
+                </div>
+              )}
               {historialTipo === 'normal' && (
                 <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/50 p-2 rounded-2xl border border-slate-200 dark:border-slate-700">
                   <Filter className="text-blue-500 dark:text-blue-400 ml-2" size={20} />
@@ -2270,7 +2283,10 @@ const Combustibles = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
-                    {historial.map((bloque, idx) => (
+                    {historial.filter(bloque => {
+                      if (!busquedaLitros) return true;
+                      return bloque.cargas?.some(carga => carga.litros?.toString().includes(busquedaLitros));
+                    }).map((bloque, idx) => (
                       <tr key={idx} className="group hover:bg-blue-600/5 transition-colors">
                         <td className="px-8 py-5">
                           <div className="flex items-center gap-3">
@@ -2347,10 +2363,13 @@ const Combustibles = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
-                    {historialEspecial.map((bloque, idx) => {
-                      const fechas = bloque.cargas?.map(c => new Date(c.fecha).getTime()) || [];
-                      const minDate = fechas.length > 0 ? new Date(Math.min(...fechas)).toLocaleDateString() : 'N/A';
-                      const maxDate = fechas.length > 0 ? new Date(Math.max(...fechas)).toLocaleDateString() : 'N/A';
+                    {historialEspecial.filter(bloque => {
+                      if (!busquedaLitros) return true;
+                      return bloque.cargas?.some(carga => carga.litros?.toString().includes(busquedaLitros));
+                    }).map((bloque, idx) => {
+                      const fechas = bloque.cargas?.map(c => new Date(c.fecha + 'T12:00:00').getTime()) || [];
+                      const minDate = fechas.length > 0 ? new Date(Math.min(...fechas)).toLocaleDateString('es-MX') : 'N/A';
+                      const maxDate = fechas.length > 0 ? new Date(Math.max(...fechas)).toLocaleDateString('es-MX') : 'N/A';
                       const rangoFechas = minDate === maxDate ? minDate : `${minDate} - ${maxDate}`;
                       return (
                       <tr key={idx} className="group hover:bg-amber-600/5 transition-colors">
