@@ -49,10 +49,12 @@ export default function ContraRecibos() {
     folio_factura: '',
     fecha_emision: '',
     importe: '',
+    descuento: '',
     estado: 'Aceptada',
     motivo_rechazo: '',
     observacion: ''
   });
+  const [mostrarDescuento, setMostrarDescuento] = useState(false);
 
   // Historial
   const [historial, setHistorial] = useState([]);
@@ -98,15 +100,17 @@ export default function ContraRecibos() {
       return;
     }
 
-    setFacturas([...facturas, { ...nuevaFactura }]);
+    setFacturas([...facturas, { ...nuevaFactura, descuento: nuevaFactura.descuento || '0' }]);
     setNuevaFactura({
       folio_factura: '',
       fecha_emision: '',
       importe: '',
+      descuento: '',
       estado: 'Aceptada',
       motivo_rechazo: '',
       observacion: ''
     });
+    setMostrarDescuento(false);
   };
 
   const handleRemoveFactura = (index) => {
@@ -134,6 +138,7 @@ export default function ContraRecibos() {
         folio_factura: f.folio_factura,
         fecha_emision: f.fecha_emision,
         importe: parseFloat(f.importe),
+        descuento: parseFloat(f.descuento || 0),
         estado: f.estado,
         motivo_rechazo: f.motivo_rechazo,
         observacion: f.observacion
@@ -181,6 +186,7 @@ export default function ContraRecibos() {
   };
 
   const totalImporte = facturas.reduce((sum, f) => sum + parseFloat(f.importe || 0), 0);
+  const totalDescuento = facturas.reduce((sum, f) => sum + parseFloat(f.descuento || 0), 0);
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -381,7 +387,32 @@ export default function ContraRecibos() {
                 </div>
               )}
               
-              <div className="flex justify-end">
+              {mostrarDescuento && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 animate-in slide-in-from-top-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Descuento Aplicado</label>
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={nuevaFactura.descuento}
+                        onChange={(e) => setNuevaFactura({...nuevaFactura, descuento: e.target.value})}
+                        placeholder="0.00"
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 pl-7 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex justify-between items-center mt-2">
+                <button
+                  onClick={() => setMostrarDescuento(!mostrarDescuento)}
+                  className="inline-flex items-center px-4 py-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-400 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-sm font-medium rounded-md transition-colors"
+                >
+                  {mostrarDescuento ? 'Ocultar Descuento' : 'Agregar Descuento'}
+                </button>
                 <button
                   onClick={handleAddFactura}
                   className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md shadow-sm transition-colors"
@@ -400,14 +431,28 @@ export default function ContraRecibos() {
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Folio</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Importe</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subtotal</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Desc.</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">IVA</th>
+                      {resicoAplicado && (
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">RESICO</th>
+                      )}
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Detalles Rechazo</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Detalles</th>
                       <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acción</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {facturas.map((f, idx) => (
+                    {facturas.map((f, idx) => {
+                      const gran_total = parseFloat(f.importe || 0);
+                      const descuento = parseFloat(f.descuento || 0);
+                      const subtotal_base = resicoAplicado ? (gran_total / 1.1475) : (gran_total / 1.16);
+                      const subtotal = subtotal_base + descuento;
+                      const iva = subtotal_base * 0.16;
+                      const resico = resicoAplicado ? (subtotal_base * 0.0125) : 0;
+                      
+                      return (
                       <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-750">
                         <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                           <div className="flex items-center">
@@ -416,7 +461,15 @@ export default function ContraRecibos() {
                           </div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{f.fecha_emision}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white font-medium">${parseFloat(f.importe).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-red-600 dark:text-red-400">
+                          {descuento > 0 ? `-$${descuento.toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '-'}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">${iva.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
+                        {resicoAplicado && (
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-amber-600 dark:text-amber-400">-${resico.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
+                        )}
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">${gran_total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             f.estado === 'Aceptada' 
@@ -445,11 +498,16 @@ export default function ContraRecibos() {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                   <tfoot className="bg-gray-50 dark:bg-gray-900">
                     <tr>
-                      <td colSpan="2" className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Totales:</td>
+                      <td colSpan="3" className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Total Descuentos:</td>
+                      <td className="px-4 py-3 text-left text-sm font-bold text-red-600 dark:text-red-400">
+                        {totalDescuento > 0 ? `-$${totalDescuento.toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '-'}
+                      </td>
+                      <td colSpan={resicoAplicado ? 2 : 1} className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Gran Total a Pagar:</td>
                       <td className="px-4 py-3 text-left text-sm font-bold text-gray-900 dark:text-white">
                         ${totalImporte.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                       </td>

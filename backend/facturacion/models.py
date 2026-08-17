@@ -377,6 +377,7 @@ class ContraReciboFactura(models.Model):
     folio_factura = models.CharField(max_length=100, verbose_name="Folio Factura")
     fecha_emision = models.DateField(verbose_name="Fecha Emisión")
     importe = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Importe")
+    descuento = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Descuento")
     estado = models.CharField(max_length=20, choices=ESTADOS, default='Aceptada', verbose_name="Estado")
     motivo_rechazo = models.TextField(blank=True, null=True, verbose_name="Motivo de Rechazo")
     observacion = models.TextField(blank=True, null=True, verbose_name="Observación para el proveedor")

@@ -566,14 +566,22 @@ class ContraReciboViewSet(viewsets.ModelViewSet):
             copy_elements.append(Paragraph(f"<b>Aplica RESICO:</b> {'Sí' if cr.resico_aplicado else 'No'}", info_style))
             copy_elements.append(Spacer(1, 15))
             
-            if is_company_copy:
-                data = [['Folio', 'Fecha', 'Subtotal', 'IVA', 'Total', 'Estado']]
+            if cr.resico_aplicado:
+                if is_company_copy:
+                    data = [['Folio', 'Fecha', 'Subtotal', 'Desc.', 'IVA', 'RESICO', 'Total', 'Estado']]
+                else:
+                    data = [['Folio', 'Fecha', 'Subtotal', 'Desc.', 'IVA', 'RESICO', 'Total', 'Estado', 'Motivo/Obs.']]
             else:
-                data = [['Folio', 'Fecha', 'Subtotal', 'IVA', 'Total', 'Estado', 'Motivo / Obs.']]
+                if is_company_copy:
+                    data = [['Folio', 'Fecha', 'Subtotal', 'Desc.', 'IVA', 'Total', 'Estado']]
+                else:
+                    data = [['Folio', 'Fecha', 'Subtotal', 'Desc.', 'IVA', 'Total', 'Estado', 'Motivo/Obs.']]
             
             sum_subtotal = 0
             sum_iva = 0
-            sum_total = 0
+            sum_total_antes_retenciones = 0
+            sum_gran_total = 0
+            sum_descuentos = 0
             count_copy = 0
             
             for factura in invoices:
@@ -582,43 +590,64 @@ class ContraReciboViewSet(viewsets.ModelViewSet):
                 texto_rechazo = f"{motivo} - {observacion}" if motivo or observacion else ""
                 
                 # Desglose matemático:
-                # El importe es el TOTAL.
-                total_fac = float(factura.importe)
-                subtotal_fac = total_fac / 1.16
-                iva_fac = total_fac - subtotal_fac
+                gran_total_fac = float(factura.importe)
+                descuento_fac = float(factura.descuento) if hasattr(factura, 'descuento') and factura.descuento else 0.0
                 
-                sum_total += total_fac
+                if cr.resico_aplicado:
+                    # Gran Total = (Subtotal - Descuento) * 1.1475
+                    subtotal_menos_descuento = gran_total_fac / 1.1475
+                    resico_fac = subtotal_menos_descuento * 0.0125
+                else:
+                    # Gran Total = (Subtotal - Descuento) * 1.16
+                    subtotal_menos_descuento = gran_total_fac / 1.16
+                    resico_fac = 0.0
+                
+                subtotal_fac = subtotal_menos_descuento + descuento_fac
+                iva_fac = subtotal_menos_descuento * 0.16
+                total_antes_resico = subtotal_menos_descuento + iva_fac
+                
+                sum_gran_total += gran_total_fac
+                sum_total_antes_retenciones += total_antes_resico
                 sum_subtotal += subtotal_fac
                 sum_iva += iva_fac
+                sum_descuentos += descuento_fac
                 count_copy += 1
                 
                 val_subtotal = "" if cr.sin_desglose else f"${subtotal_fac:,.2f}"
                 val_iva = "" if cr.sin_desglose else f"${iva_fac:,.2f}"
+                val_resico = "" if cr.sin_desglose else f"-${resico_fac:,.2f}"
 
-                if is_company_copy:
-                    data.append([
-                        factura.folio_factura,
-                        factura.fecha_emision.strftime('%d/%m/%Y'),
-                        val_subtotal,
-                        val_iva,
-                        f"${total_fac:,.2f}",
-                        factura.estado
-                    ])
-                else:
-                    data.append([
-                        factura.folio_factura,
-                        factura.fecha_emision.strftime('%d/%m/%Y'),
-                        val_subtotal,
-                        val_iva,
-                        f"${total_fac:,.2f}",
-                        factura.estado,
-                        texto_rechazo
-                    ])
+                row = [
+                    factura.folio_factura,
+                    factura.fecha_emision.strftime('%d/%m/%Y'),
+                    val_subtotal,
+                    f"${descuento_fac:,.2f}",
+                    val_iva,
+                ]
+
+                if cr.resico_aplicado:
+                    row.append(val_resico)
+
+                row.extend([
+                    f"${gran_total_fac:,.2f}",
+                    factura.estado
+                ])
+
+                if not is_company_copy:
+                    row.append(texto_rechazo)
+
+                data.append(row)
             
-            if is_company_copy:
-                table = Table(data, colWidths=[1.3*inch, 1.0*inch, 1.1*inch, 1.1*inch, 1.1*inch, 1.4*inch])
+            if cr.resico_aplicado:
+                if is_company_copy:
+                    table = Table(data, colWidths=[1.0*inch, 0.7*inch, 0.9*inch, 0.7*inch, 0.7*inch, 0.8*inch, 0.9*inch, 1.0*inch])
+                else:
+                    table = Table(data, colWidths=[0.8*inch, 0.7*inch, 0.8*inch, 0.6*inch, 0.6*inch, 0.7*inch, 0.8*inch, 0.7*inch, 1.4*inch])
             else:
-                table = Table(data, colWidths=[1.0*inch, 0.8*inch, 1.0*inch, 1.0*inch, 1.0*inch, 0.8*inch, 2.0*inch])
+                if is_company_copy:
+                    table = Table(data, colWidths=[1.1*inch, 0.8*inch, 1.0*inch, 0.9*inch, 1.0*inch, 1.0*inch, 1.2*inch])
+                else:
+                    table = Table(data, colWidths=[0.9*inch, 0.7*inch, 0.8*inch, 0.7*inch, 0.8*inch, 0.9*inch, 0.7*inch, 1.5*inch])
                 
             table.setStyle(TableStyle([
                 ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1f2937')),
@@ -638,16 +667,20 @@ class ContraReciboViewSet(viewsets.ModelViewSet):
             
             # Totales
             copy_elements.append(Paragraph(f"<b>Total Facturas:</b> {count_copy}", totals_style))
+            if sum_descuentos > 0:
+                copy_elements.append(Paragraph(f"<b>Total Descuentos:</b> ${sum_descuentos:,.2f}", totals_style))
             if not cr.sin_desglose:
                 copy_elements.append(Paragraph(f"<b>Suma Subtotal:</b> ${sum_subtotal:,.2f}", totals_style))
                 copy_elements.append(Paragraph(f"<b>Suma IVA:</b> ${sum_iva:,.2f}", totals_style))
-            copy_elements.append(Paragraph(f"<b>Suma Total:</b> ${sum_total:,.2f}", totals_style))
             
             if cr.resico_aplicado:
-                resico = sum_subtotal * 0.0125
-                gran_total = sum_total - resico
+                # Retención RESICO is applied on the base (Subtotal - Descuento)
+                resico = (sum_subtotal - sum_descuentos) * 0.0125
+                copy_elements.append(Paragraph(f"<b>Suma Total (Antes de Retención):</b> ${sum_total_antes_retenciones:,.2f}", totals_style))
                 copy_elements.append(Paragraph(f"<b>Retención RESICO (1.25%):</b> -${resico:,.2f}", totals_style))
-                copy_elements.append(Paragraph(f"<b>Gran Total a Pagar:</b> ${gran_total:,.2f}", totals_style))
+                copy_elements.append(Paragraph(f"<b>Gran Total a Pagar:</b> ${sum_gran_total:,.2f}", totals_style))
+            else:
+                copy_elements.append(Paragraph(f"<b>Suma Total:</b> ${sum_gran_total:,.2f}", totals_style))
             
             if not cr.es_efectivo:
                 sig_data = [
