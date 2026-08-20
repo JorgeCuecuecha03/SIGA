@@ -161,6 +161,8 @@ USE_TZ = True
 
 STATIC_URL = '/django_static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+
 
 # Media files (Uploaded Invoices, etc.)
 # En desarrollo local se usan carpetas, pero configuramos Cloudinary para la nube
