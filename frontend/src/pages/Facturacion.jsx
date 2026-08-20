@@ -107,11 +107,15 @@ const Facturacion = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [stats, setStats] = useState({ total: 0, count: 0, units: 0, chart_data: [] });
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const itemsPerPage = 20;
 
   const getFormatDate = (date) => {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const getDateParams = () => {
@@ -186,46 +190,59 @@ const Facturacion = () => {
     }
   };
 
-  const fetchFacturasData = async () => {
-    try {
-      setLoading(true);
-      const params = {
-        page: currentPage,
-        search: searchTerm,
-        ...getDateParams()
-      };
-      
-      const [facturasRes, statsRes] = await Promise.all([
-        api.get('facturas/', { params }),
-        api.get('facturas/stats/', { params: getDateParams() })
-      ]);
-      
-      if (facturasRes.data.results) {
-        setFacturas(facturasRes.data.results);
-        setTotalItems(facturasRes.data.count);
-      } else {
-        setFacturas(facturasRes.data);
-        setTotalItems(facturasRes.data.length);
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchFacturasData = async () => {
+      try {
+        setLoading(true);
+        const params = {
+          page: currentPage,
+          search: searchTerm,
+          ...getDateParams()
+        };
+        
+        const [facturasRes, statsRes] = await Promise.all([
+          api.get('facturas/', { params }),
+          api.get('facturas/stats/', { params: getDateParams() })
+        ]);
+        
+        if (!isMounted) return;
+        
+        if (facturasRes.data.results) {
+          setFacturas(facturasRes.data.results);
+          setTotalItems(facturasRes.data.count);
+        } else {
+          setFacturas(facturasRes.data);
+          setTotalItems(facturasRes.data.length);
+        }
+        
+        setStats(statsRes.data);
+      } catch (err) {
+        if (!isMounted) return;
+        console.error("Error cargando facturas", err);
+        notify.error("No se pudieron cargar los datos de facturación.");
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
-      
-      setStats(statsRes.data);
-    } catch (err) {
-      console.error("Error cargando facturas", err);
-      notify.error("No se pudieron cargar los datos de facturación.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchFacturasData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentPage, searchTerm, dateRange, referenceDate, selectedMonth, selectedYear, refreshTrigger]);
 
   useEffect(() => {
     fetchCatalogs();
   }, []);
 
-  useEffect(() => {
-    fetchFacturasData();
-  }, [currentPage, searchTerm, dateRange, referenceDate, selectedMonth, selectedYear]);
-
-  const fetchData = fetchFacturasData;
+  const fetchData = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   const handleAltaSuccess = () => {
     setShowAltaModal(false);
