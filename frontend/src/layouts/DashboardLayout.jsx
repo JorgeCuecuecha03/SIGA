@@ -79,7 +79,7 @@ const DashboardLayout = () => {
   const logisticaItems = [
     { icon: <Users size={20} />, label: 'Operadores', path: '/operadores', roles: ['admin_general', 'admin', 'jefe_logistica'] },
     { icon: <MapPin size={20} />, label: 'Logística', path: '/logistica', roles: ['admin_general', 'admin', 'jefe_logistica'] },
-    { icon: <Truck size={20} />, label: 'Vehículos', path: '/vehiculos', roles: ['admin_general', 'admin', 'capturista', 'jefe_logistica'] },
+    { icon: <Truck size={20} />, label: 'Vehículos', path: '/vehiculos', roles: ['admin_general', 'admin', 'capturista', 'jefe_logistica', 'lector_gastos'] },
     { icon: <Droplets size={20} />, label: 'Combustible', path: '/combustible', roles: ['admin_general', 'admin', 'capturista', 'jefe_logistica'] },
   ];
 

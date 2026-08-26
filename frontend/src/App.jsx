@@ -69,7 +69,7 @@ function App() {
                 </Route>
 
                 {/* Rutas Compartidas (Capturista y Logística) */}
-                <Route element={<ProtectedRoute allowedRoles={['admin_general', 'admin', 'capturista', 'jefe_logistica']} />}>
+                <Route element={<ProtectedRoute allowedRoles={['admin_general', 'admin', 'capturista', 'jefe_logistica', 'lector_gastos']} />}>
                   <Route path="vehiculos" element={<ListaVehiculos />} />
                   <Route path="combustible" element={<Combustibles />} />
                 </Route>
